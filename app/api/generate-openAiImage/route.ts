@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-
+import { getSecrets } from "@/utils/aws-secret";
+const secrets = await getSecrets();
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
+    apiKey: secrets.OPENAI_API_KEY,
 });
 
 export async function POST(req: Request) {
