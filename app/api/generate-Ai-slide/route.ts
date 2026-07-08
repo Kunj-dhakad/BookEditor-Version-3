@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getSecrets } from "@/utils/aws-secret";
-const secrets = await getSecrets();
+
 const client = new OpenAI({
-  apiKey: secrets.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY!,
   timeout: 120000,
   maxRetries: 2,
 });

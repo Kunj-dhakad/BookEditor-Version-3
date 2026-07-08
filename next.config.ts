@@ -40,19 +40,19 @@ const nextConfig: NextConfig = {
 
 
 
-  // env: {
-  //   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  //   KD_AWS_REGION: process.env.KD_AWS_REGION,
-  //   KD_AWS_S3_BUCKET_NAME: process.env.KD_AWS_S3_BUCKET_NAME,
-  //   KD_AWS_ACCESS_KEY_ID: process.env.KD_AWS_ACCESS_KEY_ID,
-  //   KD_AWS_SECRET_ACCESS_KEY: process.env.KD_AWS_SECRET_ACCESS_KEY,
-  //   MYSQL_HOST: process.env.MYSQL_HOST,
-  //   MYSQL_USER: process.env.MYSQL_USER,
-  //   MYSQL_PASSWORD: process.env.MYSQL_PASSWORD,
-  //   MYSQL_DATABASE: process.env.MYSQL_DATABASE,
-  //   MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
+  env: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    KD_AWS_REGION: process.env.KD_AWS_REGION,
+    KD_AWS_S3_BUCKET_NAME: process.env.KD_AWS_S3_BUCKET_NAME,
+    KD_AWS_ACCESS_KEY_ID: process.env.KD_AWS_ACCESS_KEY_ID,
+    KD_AWS_SECRET_ACCESS_KEY: process.env.KD_AWS_SECRET_ACCESS_KEY,
+    MYSQL_HOST: process.env.MYSQL_HOST,
+    MYSQL_USER: process.env.MYSQL_USER,
+    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD,
+    MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+    MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
 
-  // },
+  },
 };
 
 export default nextConfig;
