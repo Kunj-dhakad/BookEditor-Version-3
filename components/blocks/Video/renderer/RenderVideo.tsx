@@ -3,13 +3,11 @@ import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { styleClipboard } from "@/lib/styleClipboard";
-// import VideoEditToolbar from "../toolbar/EditTool/VideoEdit/VideoEditToolbar";
 import Image from 'next/image'
 import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
 import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
-
-
+import { IoIosPause, IoIosPlay } from "react-icons/io";
 const getYoutubeId = (url: string): string | null => {
     if (!url) return null;
     const regExp =
@@ -60,7 +58,7 @@ const YouTubeEmbed: React.FC<{
                     onClick={(e) => e.stopPropagation()}
                     style={{ position: "relative", zIndex: 1, background: "#ff0000", color: "#fff", padding: "6px 14px", borderRadius: 4, fontSize: 12, textDecoration: "none", fontWeight: 600 }}
                 >
-                    â–¶ Watch on YouTube
+                     Watch on YouTube
                 </a>
             </div>
         );
@@ -90,8 +88,6 @@ const YouTubeEmbed: React.FC<{
         </div>
     );
 };
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 
 const RenderVideo: React.FC<{
     id: string;
@@ -260,8 +256,8 @@ const RenderVideo: React.FC<{
                                 <button
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onClick={togglePlay}
+                                     className="flex items-center justify-center absolute h-[30px] w-[30px]"
                                     style={{
-                                        position: "absolute",
                                         top: "50%",
                                         left: "50%",
                                         transform: "translate(-50%, -50%)",
@@ -269,12 +265,11 @@ const RenderVideo: React.FC<{
                                         border: "none",
                                         color: "white",
                                         fontSize: "22px",
-                                        padding: "12px 16px",
                                         borderRadius: "50%",
                                         cursor: "pointer",
                                     }}
                                 >
-                                    {isPlaying ? "âšâš" : "â–¶"}
+                                    {isPlaying ? <IoIosPause /> : <IoIosPlay />}
                                 </button>
                             </div>
                         )}
