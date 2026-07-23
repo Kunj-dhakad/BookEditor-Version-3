@@ -4,20 +4,25 @@ import React, {
   useCallback,
   useRef,
   memo,
-  // useState,
+  useState,
 } from "react";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData, TextData } from "@/app/Store/editorStore";
-import RenderText from "./RenderElement/RenderText";
-import RenderImage from "./RenderElement/RenderImage";
-import RenderButton from "./RenderElement/RenderButton";
-import RenderShape from "./RenderElement/RenderShape";
-import RenderVideo from "./RenderElement/RenderVideo";
+import RenderTable from "@/components/blocks/Table/renderer/RenderTable";
+import RenderChart from "@/components/blocks/Chart/renderer/RenderChart";
+import RenderText from "@/components/blocks/Text/renderer/RenderText";
+import RenderBookIndex from "./RenderElement/RenderBookIndex";
+import RenderImage from "@/components/blocks/Image/renderer/RenderImage";
+import RenderButton from "@/components/blocks/Button/renderer/RenderButton";
+import RenderShape from "@/components/blocks/Shape/renderer/RenderShape";
+import RenderVideo from "@/components/blocks/Video/renderer/RenderVideo";
 import SlideSettingToolbar from "./toolbar/SlideSetting/SlideSettingToolbar";
 import { registerSlideRef } from "@/lib/outputGenerateLibrary";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
-import RenderWatermark from "./RenderElement/RenderWatermark";
-import RenderSvgElements from "./RenderElement/RenderSvgElements";
+import RenderWatermark from "@/components/blocks/Watermark/renderer/RenderWatermark";
+import RenderSvgElements from "@/components/blocks/Sticker/renderer/RenderSvgElements";
+import { getCenteredMediaPlacement } from "./utils/mediaPlacement";
+import GroupSelectionBox from "./RenderElement/GroupSelectionBox";
 
 type ButtonPresetKey =
   | "button-filled"
@@ -151,7 +156,7 @@ export const TEXT_PRESETS: Record<TextPresetKey, TextPreset> = {
     height: 40,
   },
   "text-p": {
-    text: "Start writing your paragraph here…",
+    text: "Start writing your paragraph hereâ€¦",
     fontSize: 16,
     fontWeight: 400,
     lineHeight: 1.6,
@@ -179,15 +184,117 @@ interface SlideCanvasProps {
 
 const SlideCanvas = memo(
   ({ slideId, idx, isActive, onDrop, onSlideMouseDown }: SlideCanvasProps) => {
-    const setActiveElementId = useEditorStore((s) => s.setActiveElementId);
+    const { clearSelection, setSelectedElementIds } = useEditorStore(
+      useShallow((s) => ({
+        clearSelection: s.clearSelection,
+        setSelectedElementIds: s.setSelectedElementIds,
+      }))
+    );
     const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
+    const zoom = useEditorUIStore((s) => s.MainCanvasScale);
+    const slideRef = useRef<HTMLDivElement | null>(null);
+    const marqueeRef = useRef<{
+      startX: number;
+      startY: number;
+      currentX: number;
+      currentY: number;
+      active: boolean;
+      moved: boolean;
+    } | null>(null);
+    const [marquee, setMarquee] = useState<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      visible: boolean;
+    } | null>(null);
 
     const slide = useEditorStore(
       useCallback((s) => s.slides.find((sl) => sl.id === slideId), [slideId])
     );
 
+    const getCanvasPoint = useCallback((e: React.MouseEvent | MouseEvent) => {
+      const el = slideRef.current;
+      if (!el) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      const safeZoom = zoom || 1;
+      return {
+        x: (e.clientX - rect.left) / safeZoom,
+        y: (e.clientY - rect.top) / safeZoom,
+      };
+    }, [zoom]);
+
+    const buildMarquee = useCallback((startX: number, startY: number, currentX: number, currentY: number) => ({
+      x: Math.min(startX, currentX),
+      y: Math.min(startY, currentY),
+      width: Math.abs(currentX - startX),
+      height: Math.abs(currentY - startY),
+      visible: true,
+    }), []);
+
+    const handleSlideMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-element="true"]')) return;
+      if (e.button !== 0 || imageExportMode) return;
+      onSlideMouseDown(idx)(e);
+      const point = getCanvasPoint(e);
+      marqueeRef.current = {
+        startX: point.x,
+        startY: point.y,
+        currentX: point.x,
+        currentY: point.y,
+        active: true,
+        moved: false,
+      };
+      clearSelection();
+      setMarquee({ x: point.x, y: point.y, width: 0, height: 0, visible: true });
+    }, [clearSelection, getCanvasPoint, idx, imageExportMode, onSlideMouseDown]);
+
+    const handleSlideMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+      const state = marqueeRef.current;
+      if (!state?.active) return;
+      const point = getCanvasPoint(e);
+      state.currentX = point.x;
+      state.currentY = point.y;
+      const next = buildMarquee(state.startX, state.startY, point.x, point.y);
+      state.moved = next.width > 4 || next.height > 4;
+      setMarquee(next);
+    }, [buildMarquee, getCanvasPoint]);
+
+    const finishMarquee = useCallback(() => {
+      const state = marqueeRef.current;
+      marqueeRef.current = null;
+      setMarquee(null);
+      if (!state || !slide) return;
+      const box = buildMarquee(state.startX, state.startY, state.currentX, state.currentY);
+      if (!state.moved || box.width < 4 || box.height < 4) {
+        clearSelection();
+        return;
+      }
+      const intersects = (a: typeof box, b: { x: number; y: number; width: number; height: number }) =>
+        a.x <= b.x + b.width &&
+        a.x + a.width >= b.x &&
+        a.y <= b.y + b.height &&
+        a.y + a.height >= b.y;
+      const selectedIds = slide.elements
+        .filter((el) => intersects(box, {
+          x: el.data.x,
+          y: el.data.y,
+          width: el.data.width,
+          height: el.data.height,
+        }))
+        .map((el) => el.id);
+      setSelectedElementIds(selectedIds);
+    }, [buildMarquee, clearSelection, setSelectedElementIds, slide]);
+
     if (!slide) return null;
     console.log("Rendering SlideCanvas", { "new slide": slide });
+    const clipBounds = {
+      x: 0,
+      y: 0,
+      width: slide.width ?? 0,
+      height: slide.height ?? 0,
+    };
     return (
       <div data-slide-index={idx}>
         <div className="kd-slide-scroll ">
@@ -208,41 +315,67 @@ const SlideCanvas = memo(
         >
 
           <div
-            ref={(el) => registerSlideRef(idx, el)}
+            ref={(el) => {
+              slideRef.current = el;
+              registerSlideRef(idx, el);
+            }}
             className="relative w-full"
             style={{
               height: slide.height,
               background: slide.background,
+              // overflow: "hidden",
               boxShadow:
                 "0px 2px 6px rgba(0,0,0,0.04), 0px 10px 20px rgba(0,0,0,0.06), 0px 25px 50px rgba(0,0,0,0.08)",
             }}
-            onMouseDown={(e) => {
-              const target = e.target as HTMLElement;
-              if (!target.closest('[data-element="true"]')) {
-                setActiveElementId(null);
-              }
-            }}
+            onMouseDown={handleSlideMouseDown}
+            onMouseMove={handleSlideMouseMove}
+            onMouseUp={finishMarquee}
+            onMouseLeave={finishMarquee}
           >
          
 
             {slide.elements.map((el) => {
               const d = el.data as ElementData;
+              if (d.type === "text" && d.bookRole === "index")
+                return <RenderBookIndex key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "text")
-                return <RenderText key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderText key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "image")
-                return <RenderImage key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderImage key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "video")
-                return <RenderVideo key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderVideo key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "button")
-                return <RenderButton key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderButton key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "shape")
-                return <RenderShape key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderShape key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "svg")
-                return <RenderSvgElements key={el.id} id={el.id} data={d} slideIndex={idx} />;
+                return <RenderSvgElements key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "watermark")
                 return <RenderWatermark key={el.id} id={el.id} data={d} slideIndex={idx} />;
+              if (d.type === "table")
+                return <RenderTable key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
+              if (d.type === "chart")
+                return <RenderChart key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               return null;
             })}
+            {marquee?.visible && (
+              <div
+                data-element="true"
+                style={{
+                  position: "absolute",
+                  left: marquee.x,
+                  top: marquee.y,
+                  width: marquee.width,
+                  height: marquee.height,
+                  border: "1px solid var(--kd-border-accent)",
+                  background: "var(--kd-hover-bg)",
+                  opacity: 0.55,
+                  pointerEvents: "none",
+                  zIndex: 9998,
+                }}
+              />
+            )}
+            <GroupSelectionBox slideIndex={idx} />
           </div>
         </div>
       </div>
@@ -258,9 +391,9 @@ const SlideCanvas = memo(
 
 SlideCanvas.displayName = "SlideCanvas";
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MAIN CANVAS
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const MainCanvas: React.FC<{
   containerRef: React.RefObject<HTMLDivElement | null>;
 }> = ({ containerRef }) => {
@@ -271,24 +404,32 @@ const MainCanvas: React.FC<{
 
   const activeSlide = useEditorStore((s) => s.activeSlide);
 
-  // ✅ Canvas width — sirf ye ek value
+  // âœ… Canvas width â€” sirf ye ek value
   const canvasWidth = useEditorStore(
     useCallback((s) => s.slides[s.activeSlide]?.width, [])
   );
+  const canvasHeight = useEditorStore(
+    useCallback((s) => s.slides[s.activeSlide]?.height, [])
+  );
 
   // const canvasWidth = 346;
-  const { setActiveSlide, setActiveElementId, addElement } = useEditorStore(
+  const { setActiveSlide, setActiveElementId, clearSelection, addElement } = useEditorStore(
     useShallow((s) => ({
       setActiveSlide: s.setActiveSlide,
       setActiveElementId: s.setActiveElementId,
+      clearSelection: s.clearSelection,
       addElement: s.addElement,
     }))
   );
 
-  const { deleteElement, duplicateElement, undo, redo } = useEditorStore(
+  const { deleteElement, deleteElements, duplicateElement, duplicateElements, copySelectedElements, pasteElements, undo, redo } = useEditorStore(
     useShallow((s) => ({
       deleteElement: s.deleteElement,
+      deleteElements: s.deleteElements,
       duplicateElement: s.duplicateElement,
+      duplicateElements: s.duplicateElements,
+      copySelectedElements: s.copySelectedElements,
+      pasteElements: s.pasteElements,
       undo: s.undo,
       redo: s.redo,
     }))
@@ -296,6 +437,9 @@ const MainCanvas: React.FC<{
 
   const activeElementIdRef = useRef<string | null>(
     useEditorStore.getState().activeElementId
+  );
+  const selectedElementIdsRef = useRef<string[]>(
+    useEditorStore.getState().selectedElementIds
   );
 
 
@@ -344,6 +488,7 @@ useEffect(() => {
   useEffect(() => {
     const unsub = useEditorStore.subscribe((state) => {
       activeElementIdRef.current = state.activeElementId;
+      selectedElementIdsRef.current = state.selectedElementIds;
     });
     return () => unsub();
   }, []);
@@ -358,10 +503,35 @@ useEffect(() => {
       ) return;
 
       const activeId = activeElementIdRef.current;
+      const selectedIds = selectedElementIdsRef.current;
+
+      if (e.key === "Delete" && selectedIds.length > 1) {
+        e.preventDefault();
+        deleteElements(selectedIds);
+        return;
+      }
 
       if (e.key === "Delete" && activeId) {
         e.preventDefault();
         deleteElement(activeId);
+        return;
+      }
+
+      if (e.key.toLowerCase() === "d" && e.ctrlKey && selectedIds.length > 1) {
+        e.preventDefault();
+        duplicateElements(selectedIds);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        copySelectedElements();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        pasteElements();
         return;
       }
 
@@ -389,9 +559,9 @@ useEffect(() => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteElement, duplicateElement, undo, redo]);
+  }, [copySelectedElements, deleteElement, deleteElements, duplicateElement, duplicateElements, pasteElements, undo, redo]);
 
-  // ✅ Drop handler — stable
+  // âœ… Drop handler â€” stable
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -405,6 +575,14 @@ useEffect(() => {
       const x = e.clientX - slideRect.left;
       const y = e.clientY - slideRect.top;
 
+      if (type === "book-chapter") {
+        addElement({ type: "text", bookRole: "chapter", text: "Chapter title", chapterSubtitle: "", chapterAutoNumber: true, x, y, width: 270, height: 70, rotation: 0, opacity: 1, zIndex: 1, fontFamily: "Plus Jakarta Sans", fontSize: 30, fontWeight: 700, lineHeight: 1.2, textAlign: "left", letterSpacing: 0 });
+        return;
+      }
+      if (type === "book-index") {
+        addElement({ type: "text", bookRole: "index", text: "INDEX", tocTitle: "INDEX", tocLeader: ".", tocPageAlignment: "right", tocShowRanges: false, tocSpacing: 8, tocIndent: 0, x, y, width: 270, height: 240, rotation: 0, opacity: 1, zIndex: 1, fontFamily: "Plus Jakarta Sans", fontSize: 14, fontWeight: 400, lineHeight: 1.4, textAlign: "left", letterSpacing: 0 });
+        return;
+      }
       if (type.startsWith("text")) {
         const preset = TEXT_PRESETS[type as TextPresetKey];
         if (!preset) return;
@@ -430,12 +608,22 @@ useEffect(() => {
       }
 
       if (type === "image" && imgSrc) {
+        const placement = getCenteredMediaPlacement(canvasWidth, canvasHeight, 300, 200);
+        const placedX = Math.min(
+          Math.max(0, x - placement.width / 2),
+          Math.max(0, (canvasWidth || placement.width) - placement.width)
+        );
+        const placedY = Math.min(
+          Math.max(0, y - placement.height / 2),
+          Math.max(0, (canvasHeight || placement.height) - placement.height)
+        );
         addElement({
           type: "image",
           src: imgSrc,
-          x, y,
-          width: 300,
-          height: 200,
+          x: placedX,
+          y: placedY,
+          width: placement.width,
+          height: placement.height,
           rotation: 0,
           opacity: 1,
           zIndex: 1,
@@ -494,8 +682,29 @@ useEffect(() => {
         });
         return;
       }
+
+      if (type.startsWith("interaction-")) {
+        addElement({
+          type: "text",
+          text: type.replace("interaction-", "").replace(/-/g, " "),
+          x,
+          y,
+          width: 180,
+          height: 48,
+          rotation: 0,
+          opacity: 1,
+          zIndex: 1,
+          fontFamily: "Plus Jakarta Sans",
+          fontSize: 16,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          textAlign: "center",
+          letterSpacing: 0,
+        });
+        return;
+      }
     },
-    [addElement]
+    [addElement, canvasHeight, canvasWidth]
   );
 
   const handleSlideMouseDown = useCallback(
@@ -557,7 +766,7 @@ useEffect(() => {
       onMouseDown={(e) => {
         const target = e.target as HTMLElement;
         if (!target.closest('[data-element="true"]')) {
-          setActiveElementId(null);
+          clearSelection();
         }
       }}
     >

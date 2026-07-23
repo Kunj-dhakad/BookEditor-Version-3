@@ -201,6 +201,7 @@ export default function Preview({
         </div> */}
 
         <DndContext
+          id="editor-slide-sortable"
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}

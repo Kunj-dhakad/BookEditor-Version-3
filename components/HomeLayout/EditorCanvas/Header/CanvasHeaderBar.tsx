@@ -7,7 +7,7 @@ const CanvasHeaderBar: React.FC = () => {
     const setActiveRightPanel = useEditorStore((s) => s.setActiveRightPanel);
     return (
         <div >
-            <div className="kd-canvasheader-container h-10 mt-4 flex items-center justify-between px-1 py-1 rounded-lg"
+            <div data-copy-style-toolbar="true" className="kd-canvasheader-container h-10 mt-4 flex items-center justify-between px-1 py-1 rounded-lg"
             >
 
                 <div onMouseDown={(e) => {

@@ -3,26 +3,28 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAngleLeft } from "@fortawesome/free-solid-svg-icons";
 import useEditorStore from "@/app/Store/editorStore";
-import AddTextPanel from "./AddSection/AddTextPanel";
-import AddImagePanel from "./AddSection/AddImagePanel/AddImagePanel";
+import AddTextPanel from "@/components/blocks/Text/components/AddTextPanel";
+import AddImagePanel from "@/components/blocks/Image/components/AddImagePanel";
 import SubtitleSlideEditor from "./AddSection/subtitleEditToolbar";
-import AddButtonPanel from "./AddSection/AddButtonPanel";
-import AddElementPanel from "./AddSection/AddElementPanel";
-import AiSlideUpdate from "../../AiSlideUpdate";
-import AddVideoPanel from "./AddSection/AddVideo/AddVideoPanel";
+import AddButtonPanel from "@/components/blocks/Button/components/AddButtonPanel";
+import AddElementPanel from "./AddSection/Elements";
+// import AiSlideUpdate from "../../AiSlideUpdate";
+import AddVideoPanel from "@/components/blocks/Video/components/AddVideoPanel";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import TemplateAddPanel from "./Template/TemplateAddPanel";
-import WatermarkPanel from "./AddSection/Watermark";
+import WatermarkPanel from "@/components/blocks/Watermark/components";
+import InteractionPanel from "@/components/interactions/InteractionPanel";
 
 const MAIN_PANEL_KEYS = [
   "text", "image", "template", "PexelImage", "Elements",
   "AiImage", "UploadImage", "SubtitleTool", "imageReplacePanel",
   "AddButtonPanel", "AddElementPanel", "AiSlideUpdate",
-  "AddVideoPanel", "VideoReplacePanel", "TemplateAddPanel", "WatermarkPanel"
+  "AddVideoPanel", "VideoReplacePanel", "TemplateAddPanel", "WatermarkPanel", "AddInteractionsPanel"
 ];
 
-const ToolPanel: React.FC = () => {
-  const active = useEditorStore((s) => s.activeRightPanel);
+const ToolPanel: React.FC<{ panel?: string | null }> = ({ panel }) => {
+  const storeActive = useEditorStore((s) => s.activeRightPanel);
+  const active = panel ?? storeActive;
   const setSiteBarCollapsed = useEditorUIStore((s) => s.setSiteBarCollapsed);
   const setActiveRightPanel = useEditorStore((s) => s.setActiveRightPanel);
   const setActivePanelType = useEditorUIStore((s) => s.setActivePanelType);
@@ -73,10 +75,11 @@ const ToolPanel: React.FC = () => {
         {active === "SubtitleTool" && <SubtitleSlideEditor />}
         {active === "AddButtonPanel" && <AddButtonPanel />}
         {active === "AddElementPanel" && <AddElementPanel />}
-        {active === "AiSlideUpdate" && <AiSlideUpdate />}
+        {/* {active === "AiSlideUpdate" && <AiSlideUpdate />} */}
         {active === "AddVideoPanel" && <AddVideoPanel />}
         {active === "TemplateAddPanel" && <TemplateAddPanel />}
         {active === "WatermarkPanel" && <WatermarkPanel />}
+        {active === "AddInteractionsPanel" && <InteractionPanel />}
       </div>
     </div>
   );

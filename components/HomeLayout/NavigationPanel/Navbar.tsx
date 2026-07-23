@@ -9,6 +9,7 @@ const NAV_ITEMS = [
     { panel: "image", icon: <ImageIcon />, label: "Images" },
     { panel: "AddButtonPanel", icon: <ButtonIcon />, label: "Buttons" },
     { panel: "AddElementPanel", icon: <ElementsIcon />, label: "Elements" },
+    { panel: "AddInteractionsPanel", icon: <ElementsIcon />, label: "Interactions" },
     { panel: "AddVideoPanel", icon: <VideoIcon />, label: "Videos" },
     { panel: "WatermarkPanel", icon: <KdWaterMarkIcon />, label: "WaterMark" },
 ];
@@ -30,7 +31,7 @@ const Navbar: React.FC = () => {
             setLastMainPanel(null);
             return;
         }
-        setLastMainPanel(null);
+        setLastMainPanel(panel);
         setActiveRightPanel(panel);
         setActivePanelType("main");
         setSiteBarCollapsed(false);

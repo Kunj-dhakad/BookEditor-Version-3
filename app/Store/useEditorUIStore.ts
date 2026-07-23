@@ -31,9 +31,14 @@ type EditorUIStore = {
 
   activePanelType: "main" | "edit" | null;
   setActivePanelType: (v: "main" | "edit" | null) => void;
+  editOpenedFromHidden: boolean;
 
   lastMainPanel: string | null;
   setLastMainPanel: (v: string | null) => void;
+
+  /** Keeps the nested Elements library alive while an element editor replaces it. */
+  activeElementsCategory: string | null;
+  setActiveElementsCategory: (v: string | null) => void;
 
 
   cropElementId: string | null;
@@ -45,9 +50,19 @@ type EditorUIStore = {
   sidebarWidth: "main" | "edit" | "closed";
   setSidebarWidth: (v: "main" | "edit" | "closed") => void;
 
+  // Copy Style Mode state
+  isCopyStyleMode: boolean;
+  setIsCopyStyleMode: (v: boolean) => void;
+
+  copiedStyleSourceType: string | null;
+  setCopiedStyleSourceType: (type: string | null) => void;
+
+  stylePasteSourceSlide: number | null;
+  setStylePasteSourceSlide: (index: number | null) => void;
+
 };
 
-const useEditorUIStore = create<EditorUIStore>((set) => ({
+const useEditorUIStore = create<EditorUIStore>((set, get) => ({
   pendingTextColor: null,
   setPendingTextColor: (color) => set({ pendingTextColor: color }),
 
@@ -57,8 +72,7 @@ const useEditorUIStore = create<EditorUIStore>((set) => ({
   previewpanelOpen: true,
   setPreviewPanelOpen: (v) => set({ previewpanelOpen: v }),
 
-  // MainCanvasScale: 1,
-  MainCanvasScale: typeof window !== "undefined" && window.innerWidth >= 1920 ? 1.5 : 1,
+  MainCanvasScale: 1,
   setMainCanvasScale: (v) => set({ MainCanvasScale: v }),
 
   imageExportMode: false,
@@ -75,10 +89,17 @@ const useEditorUIStore = create<EditorUIStore>((set) => ({
 
   // NEW
   activePanelType: null,
-  setActivePanelType: (v) => set({ activePanelType: v }),
+  editOpenedFromHidden: false,
+  setActivePanelType: (v) => set({
+    activePanelType: v,
+    editOpenedFromHidden: v === "edit" ? get().SiteBarCollapsed : false,
+  }),
 
   lastMainPanel: null,
   setLastMainPanel: (v) => set({ lastMainPanel: v }),
+
+  activeElementsCategory: null,
+  setActiveElementsCategory: (v) => set({ activeElementsCategory: v }),
 
   // body:
   cropElementId: null,
@@ -89,6 +110,16 @@ const useEditorUIStore = create<EditorUIStore>((set) => ({
 
   sidebarWidth: "closed",
   setSidebarWidth: (v) => set({ sidebarWidth: v }),
+
+  // Copy Style Mode
+  isCopyStyleMode: false,
+  setIsCopyStyleMode: (v) => set({ isCopyStyleMode: v }),
+
+  copiedStyleSourceType: null,
+  setCopiedStyleSourceType: (type) => set({ copiedStyleSourceType: type }),
+
+  stylePasteSourceSlide: null,
+  setStylePasteSourceSlide: (index) => set({ stylePasteSourceSlide: index }),
 
 }));
 

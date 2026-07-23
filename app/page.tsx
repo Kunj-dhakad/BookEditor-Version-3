@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";   
 import useEditorStore from "@/app/Store/editorStore";
 import Header from "@/components/HomeLayout/header/header";
 import MainCanvas from "@/components/HomeLayout/EditorCanvas/main";
@@ -8,39 +8,50 @@ import { THEMES } from "@/lib/themes/themes";
 import { applyTheme } from "@/lib/themes/applyTheme";
 import ToolPanel from "@/components/HomeLayout/AssetsPanel/ToolPanel";
 import Preview from "@/components/HomeLayout/Preview/preview";
-import TextFormattingToolbar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/TextEdit/TextFormattingToolbar";
+import TextFormattingToolbar from "@/components/blocks/Text/toolbar/TextFormattingToolbar";
 import useEditorUIStore from "./Store/useEditorUIStore";
-import ImageEditPanel from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ImageEdit/ImageEditPanel";
+import ImageEditPanel from "@/components/blocks/Image/toolbar/ImageEditPanel";
 import EditorFooter from "@/components/HomeLayout/EditorCanvas/Footer/EditorFooter";
 import CanvasHeaderBar from "@/components/HomeLayout/EditorCanvas/Header/CanvasHeaderBar";
-import ButtonEditTopBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ButtonEdit/ButtonEditTopBar";
-import ShapeEditTopBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ShapeEdit/ShapeEditTopBar";
-import VideoEditTopBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/VideoEdit/VideoEditTopBar";
+import ButtonEditTopBar from "@/components/blocks/Button/toolbar/ButtonEditTopBar";
+import ShapeEditTopBar from "@/components/blocks/Shape/toolbar/ShapeEdit/ShapeEditTopBar";
+import VideoEditTopBar from "@/components/blocks/Video/toolbar/VideoEditTopBar";
 import Navbar from "@/components/HomeLayout/NavigationPanel/Navbar";
 import { LayersPanel } from "@/components/HomeLayout/Preview/Layers/LayersPanel";
 import { KdPreviewLayerbtn, KdPreviewPagebtn } from "@/lib/icon/icons";
-import SvgElementsEditPanel from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/SvgElementsEdit/SvgElementsEditPanel";
+import SvgElementsEditPanel from "@/components/blocks/Sticker/toolbar/SvgElementsEditPanel";
 import EditToolPanel from "@/components/HomeLayout/EditBarPanel/EditToolPanel";
+import StylePasteModeOverlay from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/StylePasteModeOverlay";
+import TableToolbar from "@/components/blocks/Table/toolbar/TableToolbar";
+import ChartToolbar from "@/components/blocks/Chart/toolbar/ChartToolbar";
 
 export default function Home() {
     const slides = useEditorStore((s) => s.slides);
     const activeSlide = useEditorStore((s) => s.activeSlide);
     const activeElementId = useEditorStore((s) => s.activeElementId);
+    const selectedElementIds = useEditorStore((s) => s.selectedElementIds);
+    const selectedElementCount = selectedElementIds.length;
     const activePanelType = useEditorUIStore((s) => s.activePanelType);
+    const setMainCanvasScale = useEditorUIStore((s) => s.setMainCanvasScale);
     const addSlide = useEditorStore((s) => s.addSlide);
     const setActiveSlide = useEditorStore((s) => s.setActiveSlide);
     const setAll = useProjectInfoStore.getState().setAll;
     const containerRef = useRef<HTMLDivElement | null>(null);
-    // const slideHeight = 520;
-    // const SiteBarCollapsed = useEditorUIStore((s) => s.SiteBarCollapsed);
     const previewpanelOpen = useEditorUIStore((s) => s.previewpanelOpen);
     const [PreviewTab, setPreviewTab] = React.useState<"pages" | "layers">("pages");
     const sidebarWidth = useEditorUIStore((s) => s.sidebarWidth);
+    const editOpenedFromHidden = useEditorUIStore((s) => s.editOpenedFromHidden);
     const activeRightPanel = useEditorStore((s) => s.activeRightPanel);
 
-    const activeElement = slides[activeSlide]?.elements.find(
-        (el) => el.id === activeElementId
-    );
+    const currentSlideElements = slides[activeSlide]?.elements ?? [];
+    const selectedElements = currentSlideElements.filter((el) => selectedElementIds.includes(el.id));
+    const selectedTypes = new Set(selectedElements.map((el) => el.data.type));
+    const isSameTypeSelection = selectedElementCount > 1 && selectedTypes.size === 1;
+    const activeElement = selectedElementCount <= 1
+        ? currentSlideElements.find((el) => el.id === activeElementId)
+        : isSameTypeSelection
+            ? currentSlideElements.find((el) => el.id === activeElementId) ?? selectedElements[0]
+            : null;
     async function loadTemplate(url: string) {
         try {
             const res = await fetch(url);
@@ -69,8 +80,12 @@ export default function Home() {
     }
 
     useEffect(() => {
+        useEditorStore.persist.rehydrate();
+
+        setMainCanvasScale(window.innerWidth >= 1920 ? 1.5 : 1);
+
         parent.postMessage({ type: "REACT_READY" }, "*");
-    }, []);
+    }, [setMainCanvasScale]);
 
 
 
@@ -105,6 +120,7 @@ export default function Home() {
 
     return (
         <div className="w-full h-screen overflow-hidden flex flex-col">
+            <StylePasteModeOverlay />
 
             {/* Top Header */}
             <div className="w-full h-[6.5%] shrink-0">
@@ -112,7 +128,7 @@ export default function Home() {
             </div>
 
             {/* Main Layout */}
-            <div className="flex flex-1 min-h-0 overflow-hidden">
+            <div className="relative flex flex-1 min-h-0 overflow-hidden">
 
                 {/* Left Sidebar */}
                 <div className="w-[5%] shrink-0 h-full">
@@ -121,11 +137,17 @@ export default function Home() {
 
                 {/* Tool Panel */}
 
-                <div className={`transition-all duration-300 h-full shrink-0 ${sidebarWidth === "closed" ? "w-0" : "w-[21.75%]"
+                <div className={`transition-all duration-300 h-full shrink-0 ${sidebarWidth === "closed" || (activePanelType === "edit" && editOpenedFromHidden) ? "w-0" : "w-[21.75%]"
                     }`}>
                     {activePanelType === "main" && <ToolPanel />}
-                    {activePanelType === "edit" && <EditToolPanel key={activeRightPanel} />}
+                    {activePanelType === "edit" && !editOpenedFromHidden && <EditToolPanel key={activeRightPanel} />}
                 </div>
+
+                {activePanelType === "edit" && editOpenedFromHidden && (
+                    <aside className="absolute left-[5%] top-0 bottom-0 z-40 w-[21.75%] border-r border-slate-200 bg-white shadow-xl">
+                        <EditToolPanel key={activeRightPanel} />
+                    </aside>
+                )}
 
                 <div className="flex flex-col flex-1 min-w-0 min-h-0">
 
@@ -144,6 +166,8 @@ export default function Home() {
                                 {activeElement?.data?.type === "shape" && <ShapeEditTopBar target={containerRef.current} />}
                                 {activeElement?.data?.type === "svg" && <SvgElementsEditPanel target={containerRef.current} />}
                                 {activeElement?.data?.type === "video" && <VideoEditTopBar target={containerRef.current} />}
+                                {activeElement?.data?.type === "table" && <TableToolbar />}
+                                {activeElement?.data?.type === "chart" && <ChartToolbar />}
                             </div>
 
 

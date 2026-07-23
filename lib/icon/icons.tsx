@@ -1239,3 +1239,9 @@ export const Kd_magic_TextGenIcon = () => (
 </svg>
 
 )
+export const KdPaintRollerIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 2H7C5.9 2 5 2.9 5 4V10C5 11.1 5.9 12 7 12H17C18.1 12 19 11.1 19 10V4C19 2.9 18.1 2 17 2ZM17 10H7V4H17V10Z" fill="currentColor" />
+        <path d="M4 14C3.45 14 3 14.45 3 15V18C3 19.66 4.34 21 6 21H18C19.66 21 21 19.66 21 18V15C21 14.45 20.55 14 20 14C19.45 14 19 14.45 19 15V18C19 18.55 18.55 19 18 19H6C5.45 19 5 18.55 5 18V15C5 14.45 4.55 14 4 14Z" fill="currentColor" />
+    </svg>
+);

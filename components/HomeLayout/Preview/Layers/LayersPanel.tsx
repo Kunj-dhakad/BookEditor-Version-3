@@ -7,6 +7,8 @@ function getDisplayText(data: ElementData): string | null {
   if (data.type === "text" || data.type === "button") {
     return data.text?.trim() ? data.text.trim().slice(0, 18) : null;
   }
+  if (data.type === "table") return `${data.rows} × ${data.columns} table`;
+  if (data.type === "chart") return data.title || `${data.chartType} chart`;
   return null;
 }
 

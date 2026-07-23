@@ -10,7 +10,10 @@ import {
   SVGData,
   VideoData,
   ShapeData,
+  TableData,
+  ChartData,
 } from "@/app/Store/editorStore";
+import ChartRenderer from "@/components/blocks/Chart/renderer/ChartRenderer";
 
 const SCALE = 0.20;
 
@@ -175,6 +178,16 @@ const ShapeElement = React.memo(({ data }: { data: ShapeData }) => (
 ));
 ShapeElement.displayName = "ShapeElement";
 
+const TableElement = React.memo(({ data }: { data: TableData }) => (
+  <table style={{ position: "absolute", left: data.x, top: data.y, width: data.width, height: data.height, tableLayout: "fixed", borderCollapse: "collapse", fontFamily: data.style.fontFamily, fontSize: data.style.fontSize, fontWeight: data.style.fontWeight, fontStyle: data.style.fontStyle ?? "normal", textDecoration: data.style.textDecoration ?? "none", color: data.style.textColor, background: data.style.background, lineHeight: data.style.lineHeight, letterSpacing: data.style.letterSpacing }}>
+    <tbody>{data.cells.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, columnIndex) => !cell.hidden && <td key={columnIndex} rowSpan={cell.rowSpan} colSpan={cell.colSpan} style={{ border: `${data.style.borderWidth}px solid ${data.style.borderColor}`, background: data.style.cellBackground, padding: data.style.padding, boxSizing: "border-box", textAlign: data.style.textAlign, verticalAlign: data.style.verticalAlign, whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", overflow: "hidden" }}>{cell.text}</td>)}</tr>)}</tbody>
+  </table>
+));
+TableElement.displayName = "TableElement";
+
+const ChartElement = React.memo(({ data }: { data: ChartData }) => <div style={{ position: "absolute", left: data.x, top: data.y, width: data.width, height: data.height, transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: "center" }}><ChartRenderer data={data} /></div>);
+ChartElement.displayName = "ChartElement";
+
 
 const VideoElement = React.memo(({ data }: { data: VideoData }) => (
   data.thumbnail ? (
@@ -216,7 +229,7 @@ const VideoElement = React.memo(({ data }: { data: VideoData }) => (
 VideoElement.displayName = "VideoElement";
 
 
-// ─── Dispatcher —
+// â”€â”€â”€ Dispatcher â€”
 const SlideElement = React.memo(({ el }: { el: ElementType }) => {
   switch (el.data.type) {
     case "text":
@@ -234,6 +247,10 @@ const SlideElement = React.memo(({ el }: { el: ElementType }) => {
       return <ShapeElement data={el.data as ShapeData} />;
     case "svg":
       return <SvgElement data={el.data as SVGData} />;
+    case "table":
+      return <TableElement data={el.data as TableData} />;
+    case "chart":
+      return <ChartElement data={el.data as ChartData} />;
     default:
       return null;
   }
@@ -255,7 +272,7 @@ function arePropsEqual(
   }
   return true;
 }
-// ─── Main component ────────────────────────────────────────────────────────
+// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MiniSlidePreview({ slide }: { slide: SlideType }) {
   const slideWidth = slide.width ?? 853.33;
   const slideHeight = slide.height ?? 480;

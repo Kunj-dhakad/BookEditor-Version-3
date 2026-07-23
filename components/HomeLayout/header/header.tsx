@@ -7,7 +7,10 @@ import useProjectInfoStore from "../../../app/Store/projectInfoStore";
 import Image from 'next/image'
 // import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { MdOutlineDownloadDone } from "react-icons/md";
+import { useRouter } from "next/navigation";
+
 const Header: React.FC = () => {
+  const router = useRouter();
   // const { setImageExportMode } = useEditorUIStore.getState();
   const [open, setOpen] = useState(false);
 
@@ -223,18 +226,17 @@ const Header: React.FC = () => {
 
       {/* LEFT */}
       <div className="flex items-center gap-3">
-        <div className="kd-header-logo w-8 h-8 rounded-lg flex items-center justify-center"
-          onClick={() => window.open(`${api_url}dashboard`, "_top")}
-
-        >
+        <div className="kd-header-logo w-8 h-8 rounded-lg flex items-center justify-center">
+          <a
+          >
             <Image
               src={`${api_url}app/assets/images/favicon.png`}
               width={10}
               height={10}
               alt=""
               unoptimized
-              className="w-full p-1 object-contain"
             />
+          </a>
         </div>
       </div>
 
@@ -293,6 +295,13 @@ const Header: React.FC = () => {
 
       {/* RIGHT */}
       <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => router.push("/preview")}
+          className="kd-header-action-btn kd-header-btn kd-font-jakarta"
+        >
+          Preview
+        </button>
         <button onClick={undo} className="kd-header-btn kd-header-icon-btn">
           <svg width="13" height="13" viewBox="0 0 11 11" fill="none">
             <path
