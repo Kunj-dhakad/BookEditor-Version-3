@@ -1,8 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import {
-  ChevronUp,
-  ChevronDown,
   ChevronDown as ChevronDownIcon,
   AlignLeft,
   AlignCenter,

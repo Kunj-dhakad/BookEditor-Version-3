@@ -40,7 +40,6 @@ export type TextData = Transform & Border & Shadow & {
   tocIndent?: number;
   tocMarginTop?: number;
   tocMarginBottom?: number;
-  /** Continuation index elements are managed by their originating index. */
   indexRootId?: string;
   indexPage?: number;
   text: string;

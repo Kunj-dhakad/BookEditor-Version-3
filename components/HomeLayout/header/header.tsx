@@ -318,10 +318,10 @@ const Header: React.FC = () => {
             />
           </svg>
         </button>
-
+{/* 
         {(token === "GAoWFzwbAUldXxsYChoLBgEWKwIBRF9B" ||
         token === "GAoWFzwbAUlTXxsYChoLBgEWKwIBRFtO" ||
-          token === "GAoWFzwbAUlYXxsYChoLBgEWKwIBRF9N") && (
+          token === "GAoWFzwbAUlYXxsYChoLBgEWKwIBRF9N") && ( */}
             <button
               onClick={() => setOpen(true)}
               className="kd-header-action-btn kd-header-btn kd-font-jakarta"
@@ -338,7 +338,7 @@ const Header: React.FC = () => {
                 </defs>
               </svg>
             </button>
-          )}
+          {/* )} */}
 
         <ShareModal open={open} setOpen={setOpen} />
         <button

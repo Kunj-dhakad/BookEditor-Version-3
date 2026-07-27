@@ -85,25 +85,17 @@ const EditToolPanel: React.FC = () => {
   const isMixedSelection = selectedElementIds.length > 1 && selectedTypes.length > 1;
   const sameType = selectedTypes[0];
   const panelTypes = active ? PANEL_TYPES[active] : undefined;
-  // Shared property panel rule: multiple selections may edit only when every
-  // selected element has the same type and the current panel supports that type.
   const isPanelAllowedForSelection =
     selectedElementIds.length <= 1 ||
     (!isMixedSelection && sameType && (!panelTypes || panelTypes.includes(sameType)));
   const setSidebarWidth = useEditorUIStore((s) => s.setSidebarWidth);
   const closeEditPanel = useCallback(() => {
     const mainPanel = useEditorUIStore.getState().lastMainPanel;
-    // A hidden sidebar still needs a useful landing place after an editor is
-    // closed. Text is the established default toolbar in this editor.
     const restoredPanel = mainPanel || "text";
     setActiveRightPanel(restoredPanel);
     setActivePanelType("main");
     setSidebarWidth("main");
   }, [setActiveRightPanel, setActivePanelType, setSidebarWidth]);
-
-  // Clicking an empty area of the canvas clears the current selection. The
-  // element-specific editor must close with that selection instead of leaving
-  // an empty settings sidebar behind.
   useEffect(() => {
     if (isEditPanel && selectedElementIds.length === 0) closeEditPanel();
   }, [closeEditPanel, isEditPanel, selectedElementIds.length]);

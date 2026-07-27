@@ -5,15 +5,13 @@ import { faAngleLeft } from "@fortawesome/free-solid-svg-icons";
 import useEditorStore from "@/app/Store/editorStore";
 import AddTextPanel from "@/components/blocks/Text/components/AddTextPanel";
 import AddImagePanel from "@/components/blocks/Image/components/AddImagePanel";
-import SubtitleSlideEditor from "./AddSection/subtitleEditToolbar";
 import AddButtonPanel from "@/components/blocks/Button/components/AddButtonPanel";
 import AddElementPanel from "./AddSection/Elements";
-// import AiSlideUpdate from "../../AiSlideUpdate";
 import AddVideoPanel from "@/components/blocks/Video/components/AddVideoPanel";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import TemplateAddPanel from "./Template/TemplateAddPanel";
 import WatermarkPanel from "@/components/blocks/Watermark/components";
-import InteractionPanel from "@/components/interactions/InteractionPanel";
+import InteractionPanel from "@/components/HomeLayout/AssetsPanel/interactions/InteractionPanel";
 
 const MAIN_PANEL_KEYS = [
   "text", "image", "template", "PexelImage", "Elements",
@@ -72,10 +70,8 @@ const ToolPanel: React.FC<{ panel?: string | null }> = ({ panel }) => {
       <div className="flex-1 h-full">
         {active === "text" && <AddTextPanel />}
         {active === "image" && <AddImagePanel />}
-        {active === "SubtitleTool" && <SubtitleSlideEditor />}
         {active === "AddButtonPanel" && <AddButtonPanel />}
         {active === "AddElementPanel" && <AddElementPanel />}
-        {/* {active === "AiSlideUpdate" && <AiSlideUpdate />} */}
         {active === "AddVideoPanel" && <AddVideoPanel />}
         {active === "TemplateAddPanel" && <TemplateAddPanel />}
         {active === "WatermarkPanel" && <WatermarkPanel />}
