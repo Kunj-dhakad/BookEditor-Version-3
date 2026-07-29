@@ -383,30 +383,97 @@ export const interactionIconSvg = {
   ),
 } as const;
 
+const genId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+
+const ENGAGEMENT_KIND_MAP: Record<string, InteractionKind> = {
+  Quiz: "quiz",
+  Question: "question",
+  "Contact form": "contact-form",
+};
+
+const engagementDefaults: Record<
+  "quiz" | "question" | "contact-form",
+  Partial<InteractionData> & { width: number; height: number }
+> = {
+  quiz: {
+    width: 150,
+    height: 42,
+    text: "TAKE QUIZ",
+    quizTitle: "Quick quiz",
+    quizQuestions: [
+      {
+        id: genId(),
+        question: "What makes KPIs effective?",
+        multiple: false,
+        options: [
+          { id: genId(), text: "Aligning with goals", correct: false },
+          { id: genId(), text: "Being vague", correct: false },
+          { id: genId(), text: "Being measurable", correct: true },
+          { id: genId(), text: "Ignoring progress", correct: false },
+        ],
+      },
+    ],
+  },
+  question: {
+    width: 170,
+    height: 42,
+    text: "ANSWER QUESTION",
+    questionTitle: "Quick question",
+    questionText: "What's the overtime policy?",
+    questionPlaceholder: "Type your answer here…",
+  },
+  "contact-form": {
+    width: 140,
+    height: 42,
+    text: "Contact form",
+    contactFormTitle: "Tell us about this form",
+    contactFormDescription:
+      "This form intents to show you how a form will look like, so please fill free to complete every field, or not. No hard feelings.",
+    contactFields: [
+      { id: genId(), label: "Full company name", type: "text", placeholder: "Full company name", required: true },
+      { id: genId(), label: "Email address", type: "email", placeholder: "Email address", required: true },
+      { id: genId(), label: "Phone number", type: "tel", placeholder: "Phone number", required: false },
+    ],
+    privacyPolicyText: "I agree to the following company's Privacy Policy:",
+    privacyPolicyLink: "https://flipsnack.com",
+    showMarketingOptIn: true,
+    marketingOptInText: "I agree to receive marketing materials",
+  },
+};
+
 const InteractionPanel: React.FC = () => {
   const addElement = useEditorStore((s) => s.addElement);
   const slides = useEditorStore((s) => s.slides);
   const activeSlide = useEditorStore((s) => s.activeSlide);
 
   const addInteraction = (kind: InteractionKind, platform?: string) => {
-    const [width, height] = (
-      {
-        "link-area": [42, 42],
-        "link-button": [42, 42],
-        tag: [42, 42],
-        caption: [42, 42],
-        social: [42, 42],
-      } as Record<InteractionKind, [number, number]>
-    )[kind];
+    const isEngagement = kind === "quiz" || kind === "question" || kind === "contact-form";
+    const engagementDefault = isEngagement
+      ? engagementDefaults[kind as "quiz" | "question" | "contact-form"]
+      : null;
+    const [width, height] = engagementDefault
+      ? [engagementDefault.width, engagementDefault.height]
+      : (
+          {
+            "link-area": [42, 42],
+            "link-button": [42, 42],
+            tag: [42, 42],
+            caption: [42, 42],
+            social: [42, 42],
+          } as Record<Exclude<InteractionKind, "quiz" | "question" | "contact-form">, [number, number]>
+        )[kind as Exclude<InteractionKind, "quiz" | "question" | "contact-form">];
     const slide = slides[activeSlide];
     addElement({
       type: "interaction",
       interactionKind: kind,
       svg: platform
         ? interactionIconSvg[platform as keyof typeof interactionIconSvg]
-        : interactionIconSvg[kind as Exclude<InteractionKind, "social">],
+        : isEngagement
+          ? ""
+          : interactionIconSvg[kind as Exclude<InteractionKind, "social" | "quiz" | "question" | "contact-form">],
       platform,
-      text: "",
+      text: isEngagement ? "" : "",
       x: (slide?.width ?? 350) / 2 - width / 2,
       y: (slide?.height ?? 490) / 2 - height / 2,
       width,
@@ -415,21 +482,23 @@ const InteractionPanel: React.FC = () => {
       opacity: kind === "link-area" ? 0.12 : 1,
       zIndex: 1,
       fontFamily: "Inter",
-      fontSize: 14,
-      fontWeight: 600,
+      fontSize: isEngagement ? 13 : 14,
+      fontWeight: isEngagement ? 700 : 600,
       textColor: "#ffffff",
-      backgroundColor:
-        kind === "link-area"
+      backgroundColor: isEngagement
+        ? "#18181b"
+        : kind === "link-area"
           ? "#6366f1"
           : kind === "tag"
             ? "#7c3aed"
             : "#4f46e5",
-      borderRadius: kind === "tag" || kind === "social" ? 999 : 8,
+      borderRadius: isEngagement ? 6 : kind === "tag" || kind === "social" ? 999 : 8,
       borderWidth: 0,
       iconPosition: "left",
       target: "_blank",
       tooltip: kind === "link-area" ? "Clickable area" : "",
       expandedText: "Add your caption text here.",
+      ...(engagementDefault ?? {}),
     } as InteractionData);
     const inserted = useEditorStore
       .getState()
@@ -438,7 +507,7 @@ const InteractionPanel: React.FC = () => {
     const ui = useEditorUIStore.getState();
     ui.setActivePanelType("edit");
     ui.setSidebarWidth("edit");
-    useEditorStore.getState().setActiveRightPanel("BtnMoreSetting");
+    useEditorStore.getState().setActiveRightPanel("InteractionSettings");
   };
 
   const linksAndTags: InteractionItem[] = [
@@ -540,6 +609,7 @@ const InteractionPanel: React.FC = () => {
           title="Engagement"
           items={engagement}
           badgeLabel="Business"
+          onAdd={(label) => addInteraction(ENGAGEMENT_KIND_MAP[label])}
         />
 
         <InteractionSection title="Navigation" items={navigation} />

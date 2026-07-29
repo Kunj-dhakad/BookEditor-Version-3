@@ -263,7 +263,30 @@ export type ChartData = Transform & Border & Shadow & {
   hidden?: boolean;
 };
 
-export type InteractionKind = "link-area" | "link-button" | "tag" | "caption" | "social";
+export type InteractionKind = "link-area" | "link-button" | "tag" | "caption" | "social" | "quiz" | "question" | "contact-form";
+
+export type QuizOption = {
+  id: string;
+  text: string;
+  correct?: boolean;
+};
+
+export type QuizQuestionItem = {
+  id: string;
+  question: string;
+  multiple?: boolean;
+  options: QuizOption[];
+};
+
+export type ContactFieldType = "text" | "email" | "tel" | "textarea";
+export type ContactFormField = {
+  id: string;
+  label: string;
+  type: ContactFieldType;
+  placeholder?: string;
+  required?: boolean;
+};
+
 export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fontSize" | "fontFamily" | "fontWeight" | "backgroundColor" | "textColor" | "borderColor" | "borderWidth" | "borderRadius" | "gradientFrom" | "gradientTo" | "gradientDirection" | "icon" | "iconPosition" | "letterSpacing" | "textTransform" | "fontStyle" | "textDecorationLine" | "textAlign" | "strokeStyle" | "shadowPreset" | "opacity"> & {
   type: "interaction";
   interactionKind: InteractionKind;
@@ -278,6 +301,24 @@ export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fo
   iconColor?: string;
   hoverColor?: string;
   padding?: number;
+
+  // ===== Quiz =====
+  quizTitle?: string;
+  quizQuestions?: QuizQuestionItem[];
+
+  // ===== Question =====
+  questionTitle?: string;
+  questionText?: string;
+  questionPlaceholder?: string;
+
+  // ===== Contact form =====
+  contactFormTitle?: string;
+  contactFormDescription?: string;
+  contactFields?: ContactFormField[];
+  privacyPolicyText?: string;
+  privacyPolicyLink?: string;
+  showMarketingOptIn?: boolean;
+  marketingOptInText?: string;
 };
 
 export const isInteractionData = (data: ElementData): data is InteractionData =>
