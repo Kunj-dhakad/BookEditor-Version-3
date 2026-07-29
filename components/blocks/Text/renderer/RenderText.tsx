@@ -4,7 +4,9 @@ import { useShallow } from "zustand/shallow";
 import useEditorStore, { TextData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { styleClipboard } from "@/lib/styleClipboard";
-import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
+import ElementContextMenu, {
+  ContextMenuPosition,
+} from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
 import { loadGoogleFont } from "@/lib/FontFamily/useFontLoader";
 import TextDragAndDrop, {
   TextTransformRect,
@@ -182,9 +184,11 @@ const RenderText: React.FC<{
 
     const [isTransforming, setIsTransforming] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
-    const [targetEl, setTargetEl] = useState<HTMLElement | null>(null);
+    // const [targetEl, setTargetEl] = useState<HTMLElement | null>(null);
     const targetElRef = useRef<HTMLElement | null>(null);
     const [editing, setEditing] = useState(false);
+    const [contextMenuPos, setContextMenuPos] =
+      useState<ContextMenuPosition | null>(null);
     const [tempSize, setTempSize] = useState({
       width: data.width,
       height: data.height,
@@ -238,8 +242,6 @@ const RenderText: React.FC<{
         setActiveTextRef(editingRef.current);
       }
     }, [isSelected, setActiveTextRef]);
-
-
 
     useEffect(() => {
       const el = editingRef.current;
@@ -354,9 +356,6 @@ const RenderText: React.FC<{
       });
     }, [id, updateElement]);
 
-    // Keep the transform rectangle tied to the actual rendered content. This
-    // catches every visual text change, including inline formatting and fonts
-    // that finish loading after the element has rendered.
     useEffect(() => {
       const el = editingRef.current;
       if (!el || isResizing || isTransforming) return;
@@ -538,7 +537,7 @@ const RenderText: React.FC<{
 
     const handleContainerChange = useCallback((el: HTMLDivElement | null) => {
       targetElRef.current = el;
-      setTargetEl(el);
+      // setTargetEl(el);
     }, []);
 
     const dragIntentRef = useRef(false);
@@ -590,11 +589,26 @@ const RenderText: React.FC<{
       requestAnimationFrame(() => editingRef.current?.focus());
     }, [selectedCount]);
 
+    const handleContextMenu = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveSlide(slideIndex);
+        const currentActiveId = useEditorStore.getState().activeElementId;
+        if (currentActiveId !== id) {
+          setActiveElementId(id);
+        }
+        setContextMenuPos({ x: e.clientX, y: e.clientY });
+      },
+      [id, slideIndex, setActiveSlide, setActiveElementId],
+    );
+
     const effectiveFontSize = isResizing ? tempFontSize : data.fontSize;
 
     const handleTransformStart = useCallback(
       ({ kind }: { kind: "drag" | "resize" | "rotate" }) => {
         setIsTransforming(true);
+        setContextMenuPos(null);
         if (kind === "resize") {
           setIsResizing(true);
           handleResizeStart();
@@ -706,7 +720,7 @@ const RenderText: React.FC<{
       <>
         <TextDragAndDrop
           id={id}
-          rect={{
+          rect={{      
             ...toOuterTextRect({
               x: data.x,
               y: data.y,
@@ -734,6 +748,7 @@ const RenderText: React.FC<{
             onBlur={handleBlur}
             onInput={syncHeightToText}
             onPaste={handlePaste}
+            onContextMenu={handleContextMenu}
             onClick={(e) => {
               const anchor = (e.target as HTMLElement).closest("a");
               if (!anchor) return;
@@ -774,12 +789,11 @@ const RenderText: React.FC<{
           />
         </TextDragAndDrop>
 
-        {isSelected &&
-          selectedCount <= 1 &&
-          !imageExportMode &&
-          !isResizing &&
-          !isTransforming &&
-          targetEl && <FloatingToolBar target={targetEl} />}
+        <ElementContextMenu
+          position={isSelected ? contextMenuPos : null}
+          elementId={id}
+          onClose={() => setContextMenuPos(null)}
+        />
       </>
     );
   },

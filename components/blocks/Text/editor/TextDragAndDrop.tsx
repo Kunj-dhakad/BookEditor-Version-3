@@ -6,7 +6,10 @@ import { Move, RotateCcw } from "lucide-react";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import useEditorStore from "@/app/Store/editorStore";
 import { applyCopiedStyleIfActive } from "@/lib/styleClipboard";
-import { getPageClipPath, PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
+import {
+  getPageClipPath,
+  PageClipBounds,
+} from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
 
 type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | "rotate";
 type TransformKind = "drag" | "resize" | "rotate";
@@ -33,7 +36,10 @@ interface Props {
   onSelect: (e: React.PointerEvent) => void;
   onElementClick?: () => void;
   onTransformStart?: (meta: TransformMeta) => void;
-  onTransform?: (rect: TextTransformRect, meta: TransformMeta) => TextTransformRect | void;
+  onTransform?: (
+    rect: TextTransformRect,
+    meta: TransformMeta,
+  ) => TextTransformRect | void;
   onTransformEnd: (rect: TextTransformRect, meta: TransformMeta) => void;
   onContainerChange?: (el: HTMLDivElement | null) => void;
   clipBounds?: PageClipBounds;
@@ -76,13 +82,13 @@ const anchorResizeRect = (
   handle: Handle,
   snap: TextTransformRect,
   width: number,
-  height: number
+  height: number,
 ): TextTransformRect => {
   const oldAnchor = getFixedAnchor(handle, snap.width, snap.height);
   const oldAnchorVector = rotateVector(
     oldAnchor.x - snap.width / 2,
     oldAnchor.y - snap.height / 2,
-    snap.rotation
+    snap.rotation,
   );
   const oldAnchorWorld = {
     x: snap.x + snap.width / 2 + oldAnchorVector.x,
@@ -93,7 +99,7 @@ const anchorResizeRect = (
   const newAnchorVector = rotateVector(
     newAnchor.x - width / 2,
     newAnchor.y - height / 2,
-    snap.rotation
+    snap.rotation,
   );
   const newCenter = {
     x: oldAnchorWorld.x - newAnchorVector.x,
@@ -163,9 +169,21 @@ const TextDragAndDrop: React.FC<Props> = memo(
     const [isHover, setIsHover] = useState(false);
     const [isTransforming, setIsTransforming] = useState(false);
     const [activeCursor, setActiveCursor] = useState<string | null>(null);
-    const [controlsPos, setControlsPos] = useState<{ left: number; top: number } | null>(null);
-    const [sizeBadge, setSizeBadge] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-    const [rotationBadge, setRotationBadge] = useState<{ left: number; top: number; value: number } | null>(null);
+    const [controlsPos, setControlsPos] = useState<{
+      left: number;
+      top: number;
+    } | null>(null);
+    const [sizeBadge, setSizeBadge] = useState<{
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    } | null>(null);
+    const [rotationBadge, setRotationBadge] = useState<{
+      left: number;
+      top: number;
+      value: number;
+    } | null>(null);
     const zoom = useEditorUIStore((s) => s.MainCanvasScale);
     const selectedCount = useEditorStore((s) => s.selectedElementIds.length);
     const isMultiSelection = selectedCount > 1;
@@ -192,9 +210,11 @@ const TextDragAndDrop: React.FC<Props> = memo(
       if (quickControlsRef.current) {
         quickControlsRef.current.style.display = visible ? "flex" : "none";
       }
-      document.querySelectorAll<HTMLElement>(".kd-text-toolbar").forEach((el) => {
-        el.style.display = visible ? "" : "none";
-      });
+      document
+        .querySelectorAll<HTMLElement>(".kd-text-toolbar")
+        .forEach((el) => {
+          el.style.display = visible ? "" : "none";
+        });
     }, []);
 
     const setGlobalCursor = useCallback((cursor: string | null) => {
@@ -210,10 +230,13 @@ const TextDragAndDrop: React.FC<Props> = memo(
       }
     }, []);
 
-    const lockCursor = useCallback((cursor: string) => {
-      setActiveCursor(cursor);
-      setGlobalCursor(cursor);
-    }, [setGlobalCursor]);
+    const lockCursor = useCallback(
+      (cursor: string) => {
+        setActiveCursor(cursor);
+        setGlobalCursor(cursor);
+      },
+      [setGlobalCursor],
+    );
 
     const unlockCursor = useCallback(() => {
       setActiveCursor(null);
@@ -242,29 +265,43 @@ const TextDragAndDrop: React.FC<Props> = memo(
         window.removeEventListener("scroll", updateControlsPosition, true);
         window.removeEventListener("resize", updateControlsPosition);
       };
-    }, [rect.x, rect.y, rect.width, rect.height, rect.rotation, updateControlsPosition, zoom]);
+    }, [
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+      rect.rotation,
+      updateControlsPosition,
+      zoom,
+    ]);
 
-    const applyRectToDOM = useCallback((next: TextTransformRect) => {
-      const el = containerRef.current;
-      if (!el) return;
-      el.style.left = `${next.x}px`;
-      el.style.top = `${next.y}px`;
-      el.style.width = `${next.width}px`;
-      el.style.height = `${next.height}px`;
-      el.style.transform = `rotate(${next.rotation}deg)`;
-      const clipPath = getPageClipPath(next, clipBounds) ?? "";
-      if (contentClipRef.current) {
-        contentClipRef.current.style.clipPath = clipPath;
-        contentClipRef.current.style.setProperty("-webkit-clip-path", clipPath);
-      }
-    }, [clipBounds]);
+    const applyRectToDOM = useCallback(
+      (next: TextTransformRect) => {
+        const el = containerRef.current;
+        if (!el) return;
+        el.style.left = `${next.x}px`;
+        el.style.top = `${next.y}px`;
+        el.style.width = `${next.width}px`;
+        el.style.height = `${next.height}px`;
+        el.style.transform = `rotate(${next.rotation}deg)`;
+        const clipPath = getPageClipPath(next, clipBounds) ?? "";
+        if (contentClipRef.current) {
+          contentClipRef.current.style.clipPath = clipPath;
+          contentClipRef.current.style.setProperty(
+            "-webkit-clip-path",
+            clipPath,
+          );
+        }
+      },
+      [clipBounds],
+    );
 
     const buildResizeRect = useCallback(
       (
         handle: Handle,
         snap: TextTransformRect,
         dx: number,
-        dy: number
+        dy: number,
       ): TextTransformRect => {
         const cos = Math.cos(-snap.rotation * DEG);
         const sin = Math.sin(-snap.rotation * DEG);
@@ -290,10 +327,14 @@ const TextDragAndDrop: React.FC<Props> = memo(
             const heightScale = handle.includes("s")
               ? (snap.height + ldy) / snap.height
               : (snap.height - ldy) / snap.height;
-            const rawScale = Math.abs(widthScale - 1) >= Math.abs(heightScale - 1)
-              ? widthScale
-              : heightScale;
-            const minScale = Math.max(MIN_SIZE / snap.width, MIN_SIZE / snap.height);
+            const rawScale =
+              Math.abs(widthScale - 1) >= Math.abs(heightScale - 1)
+                ? widthScale
+                : heightScale;
+            const minScale = Math.max(
+              MIN_SIZE / snap.width,
+              MIN_SIZE / snap.height,
+            );
             const scale = Math.max(minScale, rawScale);
             width = snap.width * scale;
             height = snap.height * scale;
@@ -306,7 +347,7 @@ const TextDragAndDrop: React.FC<Props> = memo(
 
         return anchorResizeRect(handle, snap, width, height);
       },
-      []
+      [],
     );
 
     const getPointerAngle = useCallback((clientX: number, clientY: number) => {
@@ -344,7 +385,8 @@ const TextDragAndDrop: React.FC<Props> = memo(
           handle,
           startX: e.clientX,
           startY: e.clientY,
-          startAngle: handle === "rotate" ? getPointerAngle(e.clientX, e.clientY) : 0,
+          startAngle:
+            handle === "rotate" ? getPointerAngle(e.clientX, e.clientY) : 0,
           snap: { ...rect },
           started: false,
           wasSelected: isSelected,
@@ -358,7 +400,18 @@ const TextDragAndDrop: React.FC<Props> = memo(
           onTransformStart?.(meta);
         }
       },
-      [disabled, getPointerAngle, id, imageExportMode, isSelected, lockCursor, onSelect, onTransformStart, rect, setChromeVisible]
+      [
+        disabled,
+        getPointerAngle,
+        id,
+        imageExportMode,
+        isSelected,
+        lockCursor,
+        onSelect,
+        onTransformStart,
+        rect,
+        setChromeVisible,
+      ],
     );
 
     const onPointerMove = useCallback(
@@ -383,7 +436,10 @@ const TextDragAndDrop: React.FC<Props> = memo(
         }
 
         let next: TextTransformRect;
-        const meta = lastMetaRef.current ?? { kind: getKind(ds.handle), handle: ds.handle };
+        const meta = lastMetaRef.current ?? {
+          kind: getKind(ds.handle),
+          handle: ds.handle,
+        };
         if (meta.kind === "resize" || meta.kind === "rotate") {
           setGlobalCursor(getResizeCursor(ds.handle));
         }
@@ -392,7 +448,10 @@ const TextDragAndDrop: React.FC<Props> = memo(
           next = { ...ds.snap, x: ds.snap.x + dx, y: ds.snap.y + dy };
         } else if (ds.handle === "rotate") {
           const angle = getPointerAngle(e.clientX, e.clientY);
-          next = { ...ds.snap, rotation: ds.snap.rotation + (angle - ds.startAngle) };
+          next = {
+            ...ds.snap,
+            rotation: ds.snap.rotation + (angle - ds.startAngle),
+          };
           const box = containerRef.current?.getBoundingClientRect();
           setRotationBadge({
             left: box ? box.left + box.width / 2 : e.clientX,
@@ -416,14 +475,26 @@ const TextDragAndDrop: React.FC<Props> = memo(
         liveRect.current = next;
         applyRectToDOM(next);
       },
-      [applyRectToDOM, buildResizeRect, formatRotation, getPointerAngle, onTransform, setChromeVisible, setGlobalCursor, zoom]
+      [
+        applyRectToDOM,
+        buildResizeRect,
+        formatRotation,
+        getPointerAngle,
+        onTransform,
+        setChromeVisible,
+        setGlobalCursor,
+        zoom,
+      ],
     );
 
     const onPointerUp = useCallback(() => {
       const ds = dragState.current;
       if (!ds) return;
 
-      const meta = lastMetaRef.current ?? { kind: getKind(ds.handle), handle: ds.handle };
+      const meta = lastMetaRef.current ?? {
+        kind: getKind(ds.handle),
+        handle: ds.handle,
+      };
       const wasMove = movedRef.current;
       const el = containerRef.current;
       if (el) {
@@ -452,7 +523,13 @@ const TextDragAndDrop: React.FC<Props> = memo(
         updateControlsPosition();
         setIsTransforming(false);
       });
-    }, [onElementClick, onTransformEnd, setChromeVisible, unlockCursor, updateControlsPosition]);
+    }, [
+      onElementClick,
+      onTransformEnd,
+      setChromeVisible,
+      unlockCursor,
+      updateControlsPosition,
+    ]);
 
     const handles: { h: Handle; style: React.CSSProperties }[] = [
       { h: "nw", style: { cursor: getResizeCursor("nw") } },
@@ -471,20 +548,32 @@ const TextDragAndDrop: React.FC<Props> = memo(
     const screenWidth = rect.width * safeZoom;
     const screenHeight = rect.height * safeZoom;
     const showCornerHandles = screenWidth >= 46 && screenHeight >= 26;
-    const visibleHandles = handles.filter(({ h }) => !isCorner(h) || showCornerHandles);
+    const visibleHandles = handles.filter(
+      ({ h }) => !isCorner(h) || showCornerHandles,
+    );
     const cornerSize = 10 / safeZoom;
     const sideWidth = 6 / safeZoom;
-    const sideHeight = Math.max(12 / safeZoom, Math.min(22 / safeZoom, rect.height - 4 / safeZoom));
+    const sideHeight = Math.max(
+      12 / safeZoom,
+      Math.min(22 / safeZoom, rect.height - 4 / safeZoom),
+    );
 
-    const getHandleStyle = (h: Handle, cursor: React.CSSProperties["cursor"]): React.CSSProperties => {
+    const getHandleStyle = (
+      h: Handle,
+      cursor: React.CSSProperties["cursor"],
+    ): React.CSSProperties => {
       if (isCorner(h)) {
         return {
           width: cornerSize,
           height: cornerSize,
           borderRadius: "50%",
           cursor,
-          ...(h.includes("n") ? { top: -cornerSize / 2 } : { bottom: -cornerSize / 2 }),
-          ...(h.includes("w") ? { left: -cornerSize / 2 } : { right: -cornerSize / 2 }),
+          ...(h.includes("n")
+            ? { top: -cornerSize / 2 }
+            : { bottom: -cornerSize / 2 }),
+          ...(h.includes("w")
+            ? { left: -cornerSize / 2 }
+            : { right: -cornerSize / 2 }),
         };
       }
 
@@ -504,7 +593,7 @@ const TextDragAndDrop: React.FC<Props> = memo(
         containerRef.current = el;
         onContainerChange?.(el);
       },
-      [onContainerChange]
+      [onContainerChange],
     );
 
     return (
@@ -529,7 +618,9 @@ const TextDragAndDrop: React.FC<Props> = memo(
           transformOrigin: "center center",
           userSelect: disabled ? "text" : "none",
           touchAction: "none",
-          cursor: activeCursor ?? (disabled ? "text" : isSelected ? "move" : "pointer"),
+          cursor:
+            activeCursor ??
+            (disabled ? "text" : isSelected ? "move" : "pointer"),
           overflow: "visible",
         }}
       >
@@ -593,70 +684,77 @@ const TextDragAndDrop: React.FC<Props> = memo(
             />
           ))}
 
-        {showQuickControls && controlsPos && typeof document !== "undefined" && createPortal(
-          <div
-            ref={quickControlsRef}
-            data-element="true"
-            data-text-quick-controls="true"
-            className="kd-transform-quick-controls"
-            style={{
-              top: controlsPos.top,
-              left: controlsPos.left,
-            }}
-          >
-            <button
-              type="button"
-              title="Rotate"
-              className="kd-transform-control-btn kd-transform-control-btn-rotate"
-              onPointerDown={(e) => {
-                setChromeVisible(false);
-                onPointerDown(e, "rotate");
+        {showQuickControls &&
+          controlsPos &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              ref={quickControlsRef}
+              data-element="true"
+              data-text-quick-controls="true"
+              className="kd-transform-quick-controls"
+              style={{
+                top: controlsPos.top,
+                left: controlsPos.left,
               }}
             >
-              <RotateCcw size={14} />
-            </button>
+              <button
+                type="button"
+                title="Rotate"
+                className="kd-transform-control-btn kd-transform-control-btn-rotate"
+                onPointerDown={(e) => {
+                  setChromeVisible(false);
+                  onPointerDown(e, "rotate");
+                }}
+              >
+                <RotateCcw size={14} />
+              </button>
 
-            <button
-              type="button"
-              title="Move"
-              className="kd-transform-control-btn kd-transform-control-btn-move"
-              onPointerDown={(e) => {
-                setChromeVisible(false);
-                onPointerDown(e, "drag");
+              <button
+                type="button"
+                title="Move"
+                className="kd-transform-control-btn kd-transform-control-btn-move"
+                onPointerDown={(e) => {
+                  setChromeVisible(false);
+                  onPointerDown(e, "drag");
+                }}
+              >
+                <Move size={14} />
+              </button>
+            </div>,
+            document.body,
+          )}
+        {rotationBadge &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="kd-transform-rotation-badge"
+              style={{
+                left: rotationBadge.left,
+                top: rotationBadge.top,
               }}
             >
-              <Move size={14} />
-            </button>
-          </div>,
-          document.body
-        )}
-        {rotationBadge && typeof document !== "undefined" && createPortal(
-          <div
-            className="kd-transform-rotation-badge"
-            style={{
-              left: rotationBadge.left,
-              top: rotationBadge.top,
-            }}
-          >
-            {rotationBadge.value}&deg;
-          </div>,
-          document.body
-        )}
-        {sizeBadge && typeof document !== "undefined" && createPortal(
-          <div
-            className="kd-transform-size-badge"
-            style={{
-              left: sizeBadge.left,
-              top: sizeBadge.top,
-            }}
-          >
-            w: {sizeBadge.width} h: {sizeBadge.height}
-          </div>,
-          document.body
-        )}
+              {rotationBadge.value}&deg;
+            </div>,
+            document.body,
+          )}
+        {sizeBadge &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="kd-transform-size-badge"
+              style={{
+                left: sizeBadge.left,
+                top: sizeBadge.top,
+              }}
+            >
+              w: {sizeBadge.width} h: {sizeBadge.height}
+            </div>,
+            document.body,
+          )}
       </div>
     );
-  }
+  },
 );
 
 TextDragAndDrop.displayName = "TextDragAndDrop";

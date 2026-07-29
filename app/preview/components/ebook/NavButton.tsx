@@ -13,7 +13,6 @@ export function NavButton() {
     prevPage
   } = useBook();
 
-  // Show navigation page triggers ONLY in Flipbook View Mode
   if (viewMode !== 'flipbook' || !pages || pages.length === 0) {
     return null;
   }
@@ -23,7 +22,6 @@ export function NavButton() {
 
   return (
     <>
-      {/* Floating Left Outer Nav Button */}
       <div className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
         <button
           id="nav-button-left"
@@ -37,7 +35,6 @@ export function NavButton() {
         </button>
       </div>
 
-      {/* Floating Right Outer Nav Button */}
       <div className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
         <button
           id="nav-button-right"

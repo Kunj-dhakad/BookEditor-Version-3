@@ -23,6 +23,7 @@ import RenderWatermark from "@/components/blocks/Watermark/renderer/RenderWaterm
 import RenderSvgElements from "@/components/blocks/Sticker/renderer/RenderSvgElements";
 import { getCenteredMediaPlacement } from "./utils/mediaPlacement";
 import GroupSelectionBox from "./RenderElement/GroupSelectionBox";
+import RenderInteraction from "@/components/blocks/Interaction/renderer/RenderInteraction";
 
 type ButtonPresetKey =
   | "button-filled"
@@ -356,6 +357,10 @@ const SlideCanvas = memo(
                 return <RenderTable key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
               if (d.type === "chart")
                 return <RenderChart key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
+          
+              if (d.type === "interaction")
+                return <RenderInteraction key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
+            
               return null;
             })}
             {marquee?.visible && (

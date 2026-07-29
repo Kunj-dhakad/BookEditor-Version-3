@@ -1,4 +1,4 @@
-import React, { useCallback, memo, useState } from "react";
+import React, { useCallback, memo } from "react";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData,  SVGData } from "@/app/Store/editorStore";
 import Image from "next/image";
@@ -6,10 +6,11 @@ import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { styleClipboard } from "@/lib/styleClipboard";
 import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
-import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
+import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
+import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
 
 
-const RenderSvgElements: React.FC<{
+const  RenderSvgElements: React.FC<{
   id: string;
   data: ElementData;
   slideIndex: number;
@@ -28,7 +29,10 @@ const RenderSvgElements: React.FC<{
     useCallback((s) => s.selectedElementIds.includes(id), [id])
   );
   const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
-  const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
+  // const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
+  const { contextMenuPos, handleContextMenu, closeContextMenu } =
+    useElementContextMenu(id, slideIndex);
+
   if (data.type !== "svg") return null;
   const Data = data as SVGData;
 
@@ -47,7 +51,8 @@ const RenderSvgElements: React.FC<{
       isSelected={isSelected}
       imageExportMode={imageExportMode}
       clipBounds={clipBounds}
-      onContainerChange={setTargetEl}
+      // onContainerChange={setTargetEl}
+      onContextMenu={handleContextMenu}
       onSelect={(e) => {
         // Handle Copy Style Mode
         const isCopyStyleMode = useEditorUIStore.getState().isCopyStyleMode;
@@ -135,9 +140,11 @@ const RenderSvgElements: React.FC<{
 
       </div>
     </CanvasDragDrop>
-    {isSelected && !imageExportMode && targetEl && (
-      <FloatingToolBar target={targetEl} />
-    )}
+    <ElementContextMenu
+      position={isSelected ? contextMenuPos : null}
+      elementId={id}
+      onClose={closeContextMenu}
+    />
     </>
   );
 }, (p, n) => {

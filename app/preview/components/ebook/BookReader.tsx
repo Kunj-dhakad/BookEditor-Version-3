@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useBook } from "./BookStateContext";
 import BookPage from "./BookPage";
@@ -7,9 +7,43 @@ import VerticalReader from "./VerticalReader";
 import HorizontalReader from "./HorizontalReader";
 import IndexPage from "./IndexPage";
 
+interface PageFlipController {
+  turnToPage?: (page: number) => void;
+  flip?: (page: number) => void;
+  turnPage?: (page: number) => void;
+  flipNext?: () => void;
+  flipPrev?: () => void;
+}
+
+interface PageFlipInstance {
+  pageFlip?: (() => PageFlipController) | PageFlipController;
+}
+
+interface HTMLFlipBookProps {
+  width: number;
+  height: number;
+  size?: "fixed" | "stretch";
+  showCover?: boolean;
+  usePortrait?: boolean;
+  drawShadow?: boolean;
+  flippingTime?: number;
+  useMouseEvents?: boolean;
+  mobileScrollSupport?: boolean;
+  maxShadowOpacity?: number;
+  startPage?: number;
+  onInit?: () => void;
+  onFlip?: (e: { data: number }) => void;
+  className?: string;
+  children?: React.ReactNode;
+}
+
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), {
   ssr: false,
-}) as any;
+}) as React.ForwardRefExoticComponent<
+  HTMLFlipBookProps & React.RefAttributes<PageFlipInstance>
+>;
+
+const noopSubscribe = () => () => {};
 
 export function BookReader() {
  const {
@@ -24,25 +58,29 @@ export function BookReader() {
   bookHeight,
   blockMouseFlip,
 } = useBook();
-  const bookFlipRef = useRef<any>(null);
+  const bookFlipRef = useRef<PageFlipInstance | null>(null);
 
   const [scale, setScale] = useState<number>(1);
-  const [mounted, setMounted] = useState(false);
   const [flipReady, setFlipReady] = useState(false);
-// const [allowMouseFlip, setAllowMouseFlip] = useState(true);
+  const mounted = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 
   const pageWidth = bookWidth;
   const pageHeight = bookHeight;
+  const [prevViewMode, setPrevViewMode] = useState(viewMode);
+  const [prevPages, setPrevPages] = useState(pages);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  if (viewMode !== prevViewMode || pages !== prevPages) {
+    setPrevViewMode(viewMode);
+    setPrevPages(pages);
 
-  useEffect(() => {
     if (viewMode === "flipbook") {
       setFlipReady(false);
     }
-  }, [viewMode, pages]);
+  }
 
   useEffect(() => {
     if (viewMode !== "flipbook" || !pages || pages.length === 0) return;
@@ -201,7 +239,7 @@ export function BookReader() {
           onInit={() => {
             setFlipReady(true);
           }}
-          onFlip={(e: any) => {
+          onFlip={(e: { data: number }) => {
             if (e && typeof e.data === "number") {
               setCurrentPage(e.data + 1);
             }

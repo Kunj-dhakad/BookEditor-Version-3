@@ -1,10 +1,11 @@
-import React, { useCallback, memo, useState } from "react";
+import React, { useCallback, memo } from "react";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData, ShapeData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
-import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
+import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
+import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
 
 
 const ShapeRenderer = memo(({ data }: { data: ShapeData }) => {
@@ -92,7 +93,9 @@ const RenderShape: React.FC<{
     );
 
     const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
-    const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
+    // const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
+    const { contextMenuPos, handleContextMenu, closeContextMenu } =
+        useElementContextMenu(id, slideIndex);
 
     if (data.type !== "shape") return null;
     const shapeData = data as ShapeData;
@@ -111,7 +114,8 @@ const RenderShape: React.FC<{
                 isSelected={isSelected}
                 imageExportMode={imageExportMode}
                 clipBounds={clipBounds}
-                onContainerChange={setTargetEl}
+                // onContainerChange={setTargetEl}
+                onContextMenu={handleContextMenu}
                 onSelect={(e) => {
                     setActiveSlide(slideIndex);
                     if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -157,14 +161,11 @@ const RenderShape: React.FC<{
                     </div>
                 )}
             </CanvasDragDrop>
-            {isSelected && !imageExportMode && targetEl && (
-                <FloatingToolBar target={targetEl} />
-            )}
-
-            {/* FloatingToolBar â€” CanvasDragDrop ke bahar, selectedId check */}
-            {/* {isSelected && !imageExportMode && (
-                <FloatingToolBarWrapper id={id} shapeData={shapeData} />
-            )} */}
+            <ElementContextMenu
+                position={isSelected ? contextMenuPos : null}
+                elementId={id}
+                onClose={closeContextMenu}
+            />
         </>
     );
 }, (p, n) => {
@@ -190,4 +191,3 @@ const RenderShape: React.FC<{
 
 RenderShape.displayName = "RenderShape";
 export default RenderShape;
-

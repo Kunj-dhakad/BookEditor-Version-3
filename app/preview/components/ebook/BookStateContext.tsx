@@ -43,7 +43,7 @@ export interface BookContextValue {
   resetBook: () => void;
 
   scale: number;
-  setPageFlipRef: (refValue: any) => void;
+  setPageFlipRef: (refValue: unknown) => void;
 
   bookWidth: number;
   bookHeight: number;
@@ -61,6 +61,34 @@ export interface BookContextValue {
 
   blockMouseFlip: boolean;
   setBlockMouseFlip: React.Dispatch<React.SetStateAction<boolean>>;
+}
+interface PageFlipHandle {
+  current?: PageFlipHandle | null;
+  pageFlip?: (() => PageFlipHandle) | PageFlipHandle;
+  turnToPage?: (page: number) => void;
+  flip?: (page: number) => void;
+  turnPage?: (page: number) => void;
+  flipNext?: () => void;
+  flipPrev?: () => void;
+}
+
+interface ElementRange {
+  id: string;
+  text: string;
+  start: number;
+  end: number;
+}
+interface SpeechMark {
+  type?: string;
+  start_time?: number;
+  end_time?: number;
+  start?: number;
+  end?: number;
+  value?: string;
+  chunks?: SpeechMark[];
+  children?: SpeechMark[];
+  words?: SpeechMark[];
+  items?: SpeechMark[];
 }
 
 const BookStateContext = createContext<BookContextValue | null>(null);
@@ -86,9 +114,6 @@ export const BookStateProvider = ({ children }: BookStateProviderProps) => {
   );
 
   const isGeneratingSpeechRef = useRef(false);
-
-  // Preview shares the editor renderer, so activate its existing non-editing
-  // mode while this reader is mounted.
   useEffect(() => {
     const ui = useEditorUIStore.getState();
     const previous = ui.imageExportMode;
@@ -100,18 +125,18 @@ export const BookStateProvider = ({ children }: BookStateProviderProps) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [blockMouseFlip, setBlockMouseFlip] = useState(false);
-  const pageFlipRef = useRef<any>(null);
+  const pageFlipRef = useRef<PageFlipHandle | null>(null);
 
-  const setPageFlipRef = useCallback((refValue: any) => {
-    pageFlipRef.current = refValue;
+  const setPageFlipRef = useCallback((refValue: unknown) => {
+    pageFlipRef.current = refValue as PageFlipHandle | null;
   }, []);
 
-  const getPageFlip = useCallback(() => {
-    let instance = pageFlipRef.current;
+  const getPageFlip = useCallback((): PageFlipHandle | null => {
+    let instance: PageFlipHandle | null | undefined = pageFlipRef.current;
 
     if (!instance) return null;
 
-    if (instance?.current) {
+    if (instance.current) {
       instance = instance.current;
     }
 
@@ -150,10 +175,16 @@ export const BookStateProvider = ({ children }: BookStateProviderProps) => {
       const parsed = JSON.parse(rawJson) as unknown;
       const source = Array.isArray(parsed)
         ? parsed
-        : (parsed as { slides?: unknown[]; pages?: unknown[]; items?: unknown[] })?.slides
-          ?? (parsed as { pages?: unknown[] })?.pages
-          ?? (parsed as { items?: unknown[] })?.items
-          ?? [];
+        : ((
+            parsed as {
+              slides?: unknown[];
+              pages?: unknown[];
+              items?: unknown[];
+            }
+          )?.slides ??
+          (parsed as { pages?: unknown[] })?.pages ??
+          (parsed as { items?: unknown[] })?.items ??
+          []);
       const pages = source as BookPageData[];
       const firstPage = pages[0];
 
@@ -175,8 +206,6 @@ export const BookStateProvider = ({ children }: BookStateProviderProps) => {
     }
   }, [rawJson]);
 
-  // The preview must open with the book currently stored by the editor. JSON
-  // typed in the preview remains an isolated, reversible preview edit.
   useEffect(() => {
     setRawJson(JSON.stringify(editorSlides, null, 2));
   }, [editorSlides]);
@@ -350,48 +379,43 @@ export const BookStateProvider = ({ children }: BookStateProviderProps) => {
   const [ttsMessage, setTtsMessage] = useState<string>("");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // const currentElementIndexRef = useRef<number>(0);
-  // const sortedElementsRef = useRef<any[]>([]);
-const stopSpeech = useCallback(() => {
-  // console.log("STOP CLICKED");
-  // console.log("audioRef =", audioRef.current);
+  const stopSpeech = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
 
-  if (audioRef.current) {
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-    audioRef.current.src = "";
-    audioRef.current = null;
-  }
+    setSpeakingElementId(null);
+    setSpeakingWordIndex(null);
+    setIsSpeaking(false);
+    setIsPaused(false);
+  }, []);
+  const pauseSpeech = useCallback(() => {
+    const audio = audioRef.current;
 
-  setSpeakingElementId(null);
-  setSpeakingWordIndex(null);
-  setIsSpeaking(false);
-  setIsPaused(false);
-}, []);
- const pauseSpeech = useCallback(() => {
-  const audio = audioRef.current;
+    if (!audio) return;
 
-  if (!audio) return;
-
-  audio.pause();
-  setIsPaused(true);
-  setIsSpeaking(true);
-}, []);
+    audio.pause();
+    setIsPaused(true);
+    setIsSpeaking(true);
+  }, []);
 
   const resumeSpeech = useCallback(async () => {
-  const audio = audioRef.current;
+    const audio = audioRef.current;
 
-  if (!audio) return;
+    if (!audio) return;
 
-  try {
-    await audio.play();
-    setIsPaused(false);
-    setIsSpeaking(true);
-  } catch (error) {
-    console.error("Resume failed:", error);
-    setTtsMessage("Resume failed. Please press play again.");
-  }
-}, []);
+    try {
+      await audio.play();
+      setIsPaused(false);
+      setIsSpeaking(true);
+    } catch (error) {
+      console.error("Resume failed:", error);
+      setTtsMessage("Resume failed. Please press play again.");
+    }
+  }, []);
   const speakCurrentPage = useCallback(async () => {
     if (isGeneratingSpeechRef.current) return;
 
@@ -431,12 +455,11 @@ const stopSpeech = useCallback(() => {
       });
 
       let fullText = "";
-      const elementRanges: any[] = [];
+      const elementRanges: ElementRange[] = [];
 
       sorted.forEach((el) => {
-        const text = el.data.type === "text"
-          ? String(el.data.text || "").trim()
-          : "";
+        const text =
+          el.data.type === "text" ? String(el.data.text || "").trim() : "";
         if (!text) return;
 
         const start = fullText.length;
@@ -477,7 +500,9 @@ const stopSpeech = useCallback(() => {
       }
 
       const data = await response.json();
-      const flattenSpeechMarks = (mark: any): any[] => {
+      const flattenSpeechMarks = (
+        mark: SpeechMark | SpeechMark[] | null | undefined,
+      ): SpeechMark[] => {
         if (!mark) return [];
 
         if (Array.isArray(mark)) {
@@ -513,7 +538,7 @@ const stopSpeech = useCallback(() => {
 
         const currentMs = audioRef.current.currentTime * 1000;
 
-        const activeMark = marks.find((mark: any) => {
+        const activeMark = marks.find((mark: SpeechMark) => {
           const startTime = Number(mark.start_time ?? 0);
           const endTime = Number(mark.end_time ?? startTime + 300);
 
@@ -547,9 +572,9 @@ const stopSpeech = useCallback(() => {
 
       audio.onpause = () => {
         if (audioRef.current) {
-    setIsPaused(true);
-    setIsSpeaking(true);
-  }
+          setIsPaused(true);
+          setIsSpeaking(true);
+        }
       };
 
       audio.onended = () => {
@@ -575,21 +600,19 @@ const stopSpeech = useCallback(() => {
       };
 
       await audio.play();
-    }
-    catch (error) {
-    console.error("FULL SPEECHIFY ERROR =", error);
+    } catch (error) {
+      console.error("FULL SPEECHIFY ERROR =", error);
 
-    setIsSpeaking(false);
-    setIsPaused(false);
-    setTtsMessage(
-      error instanceof Error ? error.message : "Speechify voice failed."
-    );
-  } finally {
-    isGeneratingSpeechRef.current = false;
-  }
-}, [pages, currentPage, stopSpeech]);
-    
- 
+      setIsSpeaking(false);
+      setIsPaused(false);
+      setTtsMessage(
+        error instanceof Error ? error.message : "Speechify voice failed.",
+      );
+    } finally {
+      isGeneratingSpeechRef.current = false;
+    }
+  }, [pages, currentPage, stopSpeech]);
+
   useEffect(() => {
     stopSpeech();
     setTtsMessage("");
@@ -609,43 +632,32 @@ const stopSpeech = useCallback(() => {
     <BookStateContext.Provider
       value={{
         rawJson,
-        setRawJson,
-
+        setRawJson,   
         pages,
-
         viewMode,
         setViewMode,
-
         currentPage,
         setCurrentPage,
-
         nextPage,
         prevPage,
         goToPage,
         setPage,
         goToLinkedPage,
-
         totalPages,
-
         zoomLevel,
         zoomIn,
         zoomOut,
         setZoomLevel,
-
         resetBook,
-
         scale,
         setPageFlipRef,
-
         bookWidth,
         bookHeight,
-
         isSpeaking,
         isPaused,
         speakingElementId,
         speakingWordIndex,
         ttsMessage,
-
         speakCurrentPage,
         pauseSpeech,
         resumeSpeech,

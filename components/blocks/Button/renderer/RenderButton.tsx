@@ -5,7 +5,8 @@ import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { styleClipboard } from "@/lib/styleClipboard";
 import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
-import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
+import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
+import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
 
 const SHADOW_MAP: Record<string, string> = {
   none: "none",
@@ -36,10 +37,12 @@ const RenderButton: React.FC<{
   );
 
   const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
-  const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
+  // const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
   const editingRef = useRef<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState(false);
   const wasSelectedAtDownRef = useRef(false);
+  const { contextMenuPos, handleContextMenu, closeContextMenu } =
+    useElementContextMenu(id, slideIndex);
 
   const syncWidthToText = useCallback(() => {
     const el = editingRef.current;
@@ -187,7 +190,8 @@ const RenderButton: React.FC<{
       isSelected={isSelected}
       imageExportMode={imageExportMode}
       clipBounds={clipBounds}
-      onContainerChange={setTargetEl}
+      // onContainerChange={setTargetEl}
+      onContextMenu={handleContextMenu}
       onSelect={handleSelect}
       onElementClick={handleBodyClick}
       onChange={(r) =>
@@ -223,9 +227,11 @@ const RenderButton: React.FC<{
         </div>
       </div>
     </CanvasDragDrop>
-    {isSelected && !imageExportMode && targetEl && (
-      <FloatingToolBar target={targetEl} />
-    )}
+    <ElementContextMenu
+      position={isSelected ? contextMenuPos : null}
+      elementId={id}
+      onClose={closeContextMenu}
+    />
     </>
   );
 }, (p, n) => {

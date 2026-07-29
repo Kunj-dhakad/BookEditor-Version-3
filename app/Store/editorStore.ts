@@ -263,7 +263,30 @@ export type ChartData = Transform & Border & Shadow & {
   hidden?: boolean;
 };
 
-export type ElementData = TextData | ImageData | ShapeData | SVGData | ButtonData | VideoData | WatermarkData | TableData | ChartData;
+export type InteractionKind = "link-area" | "link-button" | "tag" | "caption" | "social";
+export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fontSize" | "fontFamily" | "fontWeight" | "backgroundColor" | "textColor" | "borderColor" | "borderWidth" | "borderRadius" | "gradientFrom" | "gradientTo" | "gradientDirection" | "icon" | "iconPosition" | "letterSpacing" | "textTransform" | "fontStyle" | "textDecorationLine" | "textAlign" | "strokeStyle" | "shadowPreset" | "opacity"> & {
+  type: "interaction";
+  interactionKind: InteractionKind;
+  svg: string;
+  text: string;
+  link?: string;
+  url?: string;
+  tooltip?: string;
+  target?: "_self" | "_blank" | "popup";
+  platform?: string;
+  expandedText?: string;
+  iconColor?: string;
+  hoverColor?: string;
+  padding?: number;
+};
+
+export const isInteractionData = (data: ElementData): data is InteractionData =>
+  data.type === "interaction";
+
+export const isButtonLikeData = (data: ElementData): data is ButtonData | InteractionData =>
+  data.type === "button" || isInteractionData(data);
+
+export type ElementData = TextData | ImageData | ShapeData | SVGData | ButtonData | VideoData | WatermarkData | TableData | ChartData |InteractionData;
 
 export type ElementType = {
   id: string;

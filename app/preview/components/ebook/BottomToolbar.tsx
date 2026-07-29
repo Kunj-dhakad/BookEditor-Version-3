@@ -73,9 +73,8 @@ export function BottomToolbar() {
   };
 
   return (
-    <footer className="relative min-h-[60px] py-3 md:py-0 w-full border-t border-slate-200 bg-white text-slate-750 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 sticky bottom-0 z-50 shadow-md gap-3 md:gap-0">
+    <footer className="relative min-h-[60px] py-3 md:py-0 w-full border-t border-slate-200 bg-white text-slate-750 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 bottom-0 z-50 shadow-md gap-3 md:gap-0">
       
-      {/* Toast Alert message for TTS feedback */}
       {ttsMessage && (
         <div className="absolute bottom-[72px] left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs py-2 px-4 rounded-lg shadow-xl border border-slate-800 flex items-center gap-2 select-none animate-bounce font-sans pointer-events-none transition-all">
           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
@@ -83,7 +82,6 @@ export function BottomToolbar() {
         </div>
       )}
 
-      {/* Left Section: Refresh + Index + Edit JSON */}
       <div className="flex items-center gap-2 flex-wrap w-full md:w-1/3 justify-center md:justify-start">
         <button
           id="btn-toolbar-refresh"
@@ -111,7 +109,6 @@ export function BottomToolbar() {
 
       </div>
 
-      {/* Center Section: Page Selector / Current Page + TTS Audio controls */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full md:w-1/3">
         {totalPages > 0 ? (
           <div className="flex items-center gap-1 sm:gap-2 text-sm font-medium text-slate-700">

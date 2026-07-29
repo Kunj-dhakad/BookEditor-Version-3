@@ -8,10 +8,8 @@ import useEditorStore from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { beginStylePaste } from "@/lib/stylePasteMode";
 import { KdPaintRollerIcon } from "@/lib/icon/icons";
-// import TextAIGenBox from "./textAIGenBox";
-// import TextEditSetting from "./EditSetting";
+
 import { ClipboardPaste, Copy, CopyPlus,
-  //  EllipsisVertical,
     Trash2 } from "lucide-react";
 
 interface ToolbarProps {
@@ -25,7 +23,6 @@ const FloatingToolBar: React.FC<ToolbarProps> = ({ target }) => {
   const activeElementId = useEditorStore((s) => s.activeElementId);
   const slides = useEditorStore((s) => s.slides);
   const activeSlide = useEditorStore((s) => s.activeSlide);
-  // const [showTextSetting, setShowTextSetting] = useState(false);
   const element = slides[activeSlide]?.elements.find(
     (el) => el.id === activeElementId
   );
@@ -93,7 +90,6 @@ const FloatingToolBar: React.FC<ToolbarProps> = ({ target }) => {
           onMouseDown={(e) => e.preventDefault()}
           onMouseEnter={() => setShowTooltip("Duplicate")}
           onMouseLeave={() => setShowTooltip(null)}
-          // The store promotes this to a group duplicate when appropriate.
           onClick={() => selectedId && duplicateElement(selectedId)}
           >
           <CopyPlus size={16} />

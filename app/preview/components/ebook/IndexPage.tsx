@@ -8,11 +8,8 @@ import { BookPageData } from '../../types/book';
 
 export function IndexPage() {
   const { pages, setPage, setViewMode } = useBook();
-
   const pageWidth = pages?.[0]?.width || 350;
   const pageHeight = pages?.[0]?.height || 434;
-
-  // Let's budget about 140px for thumbnail width on standard layouts
   const thumbWidth = 140;
   const scale = thumbWidth / pageWidth;
   const thumbHeight = pageHeight * scale;

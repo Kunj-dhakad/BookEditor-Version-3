@@ -1,12 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import useEditorStore, { ElementData } from "@/app/Store/editorStore";
-import Image from 'next/image'
-type TextPresetKey =
-  | "text-h1"
-  | "text-h2"
-  | "text-h3"
-  | "text-p"
+import Image from "next/image";
+type TextPresetKey = "text-h1" | "text-h2" | "text-h3" | "text-p";
 
 type TextPreset = {
   text: string;
@@ -48,10 +44,7 @@ const TEXT_PRESETS: Record<TextPresetKey, TextPreset> = {
     width: 210,
     height: 40,
   },
-
 };
-
-
 
 type DefaultStyleCardProps = {
   label: string;
@@ -80,7 +73,6 @@ const DefaultStyleCard: React.FC<DefaultStyleCardProps> = ({
   );
 };
 
-
 interface TextTemplate {
   id: number;
   thumbnail_url: string;
@@ -89,7 +81,6 @@ interface TextTemplate {
   create_at: string;
   update_at: string;
 }
-
 
 type TemplateElementData = ElementData & {
   color?: string;
@@ -113,12 +104,10 @@ const AddTextPanel = () => {
   const [templates, setTemplates] = useState<TextTemplate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-
-
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
     type: string,
-    sample?: string
+    sample?: string,
   ) => {
     e.dataTransfer.setData("application/element", type);
     if (sample) e.dataTransfer.setData("application/sample", sample);
@@ -141,17 +130,53 @@ const AddTextPanel = () => {
     });
   };
 
-  const addChapter = () => addElement({
-    type: "text", bookRole: "chapter", text: "Chapter title", chapterSubtitle: "", chapterAutoNumber: true,
-    x: defaultX - 135, y: defaultY - 35, width: 270, height: 70, rotation: 0, opacity: 1, zIndex: 1,
-    fontFamily: "Plus Jakarta Sans", fontSize: 30, fontWeight: 700, lineHeight: 1.2, textAlign: "left", letterSpacing: 0,
-  });
+  const addChapter = () =>
+    addElement({
+      type: "text",
+      bookRole: "chapter",
+      text: "Chapter title",
+      chapterSubtitle: "",
+      chapterAutoNumber: true,
+      x: defaultX - 135,
+      y: defaultY - 35,
+      width: 270,
+      height: 70,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      fontFamily: "Plus Jakarta Sans",
+      fontSize: 30,
+      fontWeight: 700,
+      lineHeight: 1.2,
+      textAlign: "left",
+      letterSpacing: 0,
+    });
 
-  const addBookIndex = () => addElement({
-    type: "text", bookRole: "index", text: "INDEX", tocTitle: "INDEX", tocLeader: ".", tocPageAlignment: "right", tocShowRanges: false, tocSpacing: 8, tocIndent: 0,
-    x: defaultX - 135, y: defaultY - 120, width: 270, height: 240, rotation: 0, opacity: 1, zIndex: 1,
-    fontFamily: "Plus Jakarta Sans", fontSize: 14, fontWeight: 400, lineHeight: 1.4, textAlign: "left", letterSpacing: 0,
-  });
+  const addBookIndex = () =>
+    addElement({
+      type: "text",
+      bookRole: "index",
+      text: "INDEX",
+      tocTitle: "INDEX",
+      tocLeader: ".",
+      tocPageAlignment: "right",
+      tocShowRanges: false,
+      tocSpacing: 8,
+      tocIndent: 0,
+      x: defaultX - 135,
+      y: defaultY - 120,
+      width: 270,
+      height: 240,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      fontFamily: "Plus Jakarta Sans",
+      fontSize: 14,
+      fontWeight: 400,
+      lineHeight: 1.4,
+      textAlign: "left",
+      letterSpacing: 0,
+    });
 
   const addTextByTemplate = async (template: TextTemplate) => {
     try {
@@ -173,12 +198,10 @@ const AddTextPanel = () => {
           y: defaultY + offsetY - d.height / 2,
         } as ElementData);
       });
-
     } catch (error) {
       console.error("Error loading template:", error);
     }
   };
-
 
   useEffect(() => {
     const getTemplates = async () => {
@@ -204,50 +227,80 @@ const AddTextPanel = () => {
     getTemplates();
   }, []);
 
-
-
   return (
     <div className="kd-text-add-panel-container">
-
       <div className="kd-text-add-panel-fixed">
-
         <div className="flex items-center justify-between mb-3">
-          <span className="kd-toolPanel-heding-text">
-            Text
-          </span>
+          <span className="kd-toolPanel-heding-text">Text</span>
         </div>
         <div className="w-full kd-toolPanel-hr-devide-border mb-2" />
 
         {/* <p className="kd-toolPanel-sub-heding-text pt-2">Default Text Styles</p> */}
 
         <div className="kd-default-styles-list">
-          <DefaultStyleCard label="📖 Chapter" dragType="book-chapter" style={{ fontSize: 16, fontWeight: 700, fontFamily: "Plus Jakarta Sans" }} onClick={addChapter} onDragStart={handleDragStart} />
-          <DefaultStyleCard label="Book Index" dragType="book-index" style={{ fontSize: 15, fontWeight: 600, fontFamily: "Plus Jakarta Sans" }} onClick={addBookIndex} onDragStart={handleDragStart} />
+          <DefaultStyleCard
+            label="📖 Chapter"
+            dragType="book-chapter"
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: "Plus Jakarta Sans",
+            }}
+            onClick={addChapter}
+            onDragStart={handleDragStart}
+          />
+          <DefaultStyleCard
+            label="Book Index"
+            dragType="book-index"
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              fontFamily: "Plus Jakarta Sans",
+            }}
+            onClick={addBookIndex}
+            onDragStart={handleDragStart}
+          />
           <DefaultStyleCard
             label="Add Heading"
             dragType="text-h1"
-            style={{ fontSize: 20, fontWeight: 700, fontFamily: "Plus Jakarta Sans" }}
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "Plus Jakarta Sans",
+            }}
             onClick={() => addTextByType("text-h1")}
             onDragStart={handleDragStart}
           />
           <DefaultStyleCard
             label="Add Sub Heading"
             dragType="text-h2"
-            style={{ fontSize: 15, fontWeight: 600, fontFamily: "Plus Jakarta Sans" }}
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              fontFamily: "Plus Jakarta Sans",
+            }}
             onClick={() => addTextByType("text-h2")}
             onDragStart={handleDragStart}
           />
           <DefaultStyleCard
             label="Add Body Text"
             dragType="text-p"
-            style={{ fontSize: 13, fontWeight: 400, fontFamily: "Playpen Sans" }}
+            style={{
+              fontSize: 13,
+              fontWeight: 400,
+              fontFamily: "Playpen Sans",
+            }}
             onClick={() => addTextByType("text-h3")}
             onDragStart={handleDragStart}
           />
           <DefaultStyleCard
             label="paragraph"
             dragType="text-h3"
-            style={{ fontSize: 12, fontWeight: 400, fontFamily: "Plus Jakarta Sans" }}
+            style={{
+              fontSize: 12,
+              fontWeight: 400,
+              fontFamily: "Plus Jakarta Sans",
+            }}
             onClick={() => addTextByType("text-p")}
             onDragStart={handleDragStart}
           />
@@ -267,11 +320,11 @@ const AddTextPanel = () => {
             ))}
           </div>
         ) : templates.length > 0 ? (
-
           <div className="kd-text-add-panel-scroll">
             <div className="grid grid-cols-2 gap-4">
               {templates.map((card) => (
-                <div key={card.id}
+                <div
+                  key={card.id}
                   draggable
                   className="kd-text-add-panel-card flex flex-col items-center justify-center gap-1 p-3"
                   onClick={() => addTextByTemplate(card)}
@@ -283,20 +336,16 @@ const AddTextPanel = () => {
                     height={500}
                     alt="Picture of the author"
                   />
-
                 </div>
               ))}
             </div>
           </div>
-
         ) : (
           <div className="flex items-center justify-center h-[200px] text-sm text-gray-500">
             No templates found
           </div>
         )}
       </div>
-
-
     </div>
   );
 };

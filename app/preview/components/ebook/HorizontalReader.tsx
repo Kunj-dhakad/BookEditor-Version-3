@@ -10,7 +10,6 @@ export function HorizontalReader() {
   const [scale, setScale] = useState<number>(1);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Recalculate auto-fit scale so the book page fits viewport cleanly
   useEffect(() => {
     const handleResize = () => {
       if (!viewportRef.current) return;
@@ -33,7 +32,6 @@ export function HorizontalReader() {
 
   const lastPageSwiped = useRef<number | null>(null);
 
-  // Scroll to active page when currentPage changes externally (buttons or drawer template select)
   useEffect(() => {
     if (currentPage !== lastPageSwiped.current) {
       lastPageSwiped.current = currentPage;
@@ -44,7 +42,6 @@ export function HorizontalReader() {
     }
   }, [currentPage]);
 
-  // Observer to detect active centered slide and sync currentPage state
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !pages || pages.length === 0) return;
@@ -52,7 +49,7 @@ export function HorizontalReader() {
     const observerOptions = {
       root: viewport,
       rootMargin: '0px',
-      threshold: 0.5, // Slide is considered visible if 50% or more centered
+      threshold: 0.5, 
     };
 
     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
@@ -100,7 +97,7 @@ export function HorizontalReader() {
             key={page.id || `horiz-page-${index}`}
             id={`horiz-page-wrapper-${pageNum}`}
             data-page-index={pageNum}
-            className="min-w-full h-full snap-center flex items-center justify-center relative flex-shrink-0"
+            className="min-w-full h-full snap-center flex items-center justify-center relative shrink-0"
           >
             <div
               style={{

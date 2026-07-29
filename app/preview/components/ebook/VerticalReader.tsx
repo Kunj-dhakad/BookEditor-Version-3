@@ -10,7 +10,6 @@ export function VerticalReader() {
   const [scale, setScale] = useState<number>(1);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Recalculate auto-fit scale so the book's width fits viewport without horizontal overflow
   useEffect(() => {
     const handleResize = () => {
       if (!viewportRef.current) return;
@@ -33,7 +32,6 @@ export function VerticalReader() {
 
   const lastPageSwiped = useRef<number | null>(null);
 
-  // Scroll to active page when currentPage changes externally (buttons or drawer template select)
   useEffect(() => {
     if (currentPage !== lastPageSwiped.current) {
       lastPageSwiped.current = currentPage;
@@ -44,7 +42,6 @@ export function VerticalReader() {
     }
   }, [currentPage]);
 
-  // Scroll visibility observer to sync currentPage automatically as the user scrolls
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !pages || pages.length === 0) return;
@@ -52,7 +49,7 @@ export function VerticalReader() {
     const observerOptions = {
       root: viewport,
       rootMargin: '0px',
-      threshold: 0.5, // Page is considered active if 50% visible in view area
+      threshold: 0.5, 
     };
 
     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
@@ -100,7 +97,7 @@ export function VerticalReader() {
             key={page.id || `vert-page-${index}`}
             id={`vert-page-wrapper-${pageNum}`}
             data-page-index={pageNum}
-            className="min-h-full min-w-full h-full snap-start flex items-center justify-center relative flex-shrink-0"
+            className="min-h-full min-w-full h-full snap-start flex items-center justify-center relative shrink-0"
           >
             <div
               style={{
