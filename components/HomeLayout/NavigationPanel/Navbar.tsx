@@ -2,9 +2,11 @@ import React from "react";
 import useEditorStore from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { ButtonIcon, ElementsIcon, ImageIcon, KdWaterMarkIcon, TemplateIcon, TextIcon, VideoIcon } from "@/lib/icon/icons";
+import { FaBookReader } from "react-icons/fa";
 
 const NAV_ITEMS = [
     { panel: "TemplateAddPanel", icon: <TemplateIcon />, label: "Template" },
+    { panel: "BookCoverpage", icon: <FaBookReader  />, label: "Coverpage" },
     { panel: "text", icon: <TextIcon />, label: "Text" },
     { panel: "image", icon: <ImageIcon />, label: "Images" },
     { panel: "AddButtonPanel", icon: <ButtonIcon />, label: "Buttons" },

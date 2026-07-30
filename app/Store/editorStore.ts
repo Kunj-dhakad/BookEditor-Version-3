@@ -327,7 +327,7 @@ export const isInteractionData = (data: ElementData): data is InteractionData =>
 export const isButtonLikeData = (data: ElementData): data is ButtonData | InteractionData =>
   data.type === "button" || isInteractionData(data);
 
-export type ElementData = TextData | ImageData | ShapeData | SVGData | ButtonData | VideoData | WatermarkData | TableData | ChartData |InteractionData;
+export type ElementData = TextData | ImageData | ShapeData | SVGData | ButtonData | VideoData | WatermarkData | TableData | ChartData | InteractionData;
 
 export type ElementType = {
   id: string;
@@ -433,6 +433,11 @@ interface EditorStore {
   applyFullTemplate: (slides: SlideType[]) => void;
   updateAllSlidesSize: (width: number, height: number) => void;
   syncBookIndex: (rootElementId: string) => void;
+
+
+  insertSlideAtStart: (slide: SlideType) => void;
+  insertSlideAtEnd: (slide: SlideType) => void;
+  applyBookCovers: (front?: SlideType, back?: SlideType) => void;
 }
 
 const generateId = () =>
@@ -539,10 +544,10 @@ const useEditorStore = create<EditorStore>()(
           const rootPosition = draft.slides.findIndex((slide) => slide.id === rootSlide.id);
           if (rootPosition < 0) return;
           const additions: SlideType[] = Array.from({ length: neededContinuations }, (_, offset) => ({
-              id: generateId(), height: rootSlide.height, width: rootSlide.width, background: rootSlide.background,
-              subtitle_url: "", subtitle_text: "", subtitle_json: "", thumbnail: "",
-              elements: [{ id: generateId(), data: { ...structuredClone(rootData), indexRootId: rootElementId, indexPage: offset + 1 } }],
-            }));
+            id: generateId(), height: rootSlide.height, width: rootSlide.width, background: rootSlide.background,
+            subtitle_url: "", subtitle_text: "", subtitle_json: "", thumbnail: "",
+            elements: [{ id: generateId(), data: { ...structuredClone(rootData), indexRootId: rootElementId, indexPage: offset + 1 } }],
+          }));
           draft.slides.splice(rootPosition + 1, 0, ...additions);
         });
       },
@@ -865,7 +870,7 @@ const useEditorStore = create<EditorStore>()(
         set((state) => {
           const slide = state.slides[state.activeSlide];
           if (!slide) return;
-          
+
           // Apply style properties to all target elements
           targetElementIds.forEach((elementId) => {
             const element = slide.elements.find((el) => el.id === elementId);
@@ -906,7 +911,7 @@ const useEditorStore = create<EditorStore>()(
       setActiveRightPanel: (p) => set((s) => { s.activeRightPanel = p; }),
 
 
-     
+
       /* ==================== TEMPLATE ==================== */
 
       applyFullTemplate: (templateSlides) => {
@@ -920,6 +925,86 @@ const useEditorStore = create<EditorStore>()(
           state.selectedElementIds = [];
         });
       },
+
+
+
+      /* ==================== BOOK COVER HELPERS ==================== */
+
+      insertSlideAtStart: (slide: SlideType) => {
+        get().pushToHistory();
+        set((state) => {
+          const newSlide: SlideType = {
+            ...slide,
+            id: generateId(),
+            elements: slide.elements.map((el) => ({
+              id: generateId(),
+              data: { ...el.data },
+            })),
+          };
+          state.slides.unshift(newSlide); // first position
+          state.activeSlide = 0;
+          state.activeElementId = null;
+          state.selectedElementIds = [];
+        });
+      },
+
+      insertSlideAtEnd: (slide: SlideType) => {
+        get().pushToHistory();
+        set((state) => {
+          const newSlide: SlideType = {
+            ...slide,
+            id: generateId(),
+            elements: slide.elements.map((el) => ({
+              id: generateId(),
+              data: { ...el.data },
+            })),
+          };
+          state.slides.push(newSlide); // last position
+          state.activeSlide = state.slides.length - 1;
+          state.activeElementId = null;
+          state.selectedElementIds = [];
+        });
+      },
+
+      // Optional: dono ek saath
+      applyBookCovers: (front?: SlideType, back?: SlideType) => {
+        get().pushToHistory();
+        set((state) => {
+          if (front) {
+            const frontSlide: SlideType = {
+              ...front,
+              id: generateId(),
+              elements: front.elements.map((el) => ({
+                id: generateId(),
+                data: { ...el.data },
+              })),
+            };
+            state.slides.unshift(frontSlide);
+          }
+          if (back) {
+            const backSlide: SlideType = {
+              ...back,
+              id: generateId(),
+              elements: back.elements.map((el) => ({
+                id: generateId(),
+                data: { ...el.data },
+              })),
+            };
+            state.slides.push(backSlide);
+          }
+          state.activeSlide = 0;
+          state.activeElementId = null;
+          state.selectedElementIds = [];
+        });
+      },
+
+
+
+
+
+
+
+
     })),
     {
       name: "editor-store",
