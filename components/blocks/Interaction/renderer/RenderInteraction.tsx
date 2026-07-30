@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData, InteractionData, isInteractionData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
@@ -8,6 +8,7 @@ import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderEleme
 import type { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
 import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
 import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
+import { useBookOptional } from "@/app/preview/components/ebook/BookStateContext";
 import QuizPopup from "@/components/blocks/Interaction/popups/QuizPopup";
 import QuestionPopup from "@/components/blocks/Interaction/popups/QuestionPopup";
 import ContactFormPopup from "@/components/blocks/Interaction/popups/ContactFormPopup";
@@ -28,6 +29,13 @@ const RenderInteraction: React.FC<{ id: string; data: ElementData; slideIndex: n
   const [showHint, setShowHint] = useState(false);
   const { contextMenuPos, handleContextMenu, closeContextMenu } = useElementContextMenu(id, slideIndex);
 
+  // Only present inside the real /preview flipbook. Used to momentarily
+  // pause react-pageflip's mouse-drag-to-flip gesture while the reader is
+  // clicking a button, so the click reaches our popup instead of being
+  // swallowed as the start of a page-flip drag.
+  const book = useBookOptional();
+  const releaseFlipBlockRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   if (!isInteractionData(data)) return null;
 
   const isEngagement =
@@ -41,9 +49,28 @@ const RenderInteraction: React.FC<{ id: string; data: ElementData; slideIndex: n
     if (!isSelected) setActiveElementId(id);
   };
 
+  const holdFlipBlock = () => {
+    if (!book || !imageExportMode) return;
+    book.setBlockMouseFlip(true);
+    if (releaseFlipBlockRef.current) clearTimeout(releaseFlipBlockRef.current);
+    // Safety-net release in case pointerup/click never fires (e.g. the
+    // gesture turned into a page-flip drag instead of a click).
+    releaseFlipBlockRef.current = setTimeout(() => book.setBlockMouseFlip(false), 600);
+  };
+
+  const releaseFlipBlock = () => {
+    if (!book) return;
+    if (releaseFlipBlockRef.current) {
+      clearTimeout(releaseFlipBlockRef.current);
+      releaseFlipBlockRef.current = null;
+    }
+    book.setBlockMouseFlip(false);
+  };
+
   const activate = () => {
-    // Quiz / Question / Contact form open a real, working popup in BOTH the
-    // editor (as a demo/preview) and the published preview (fully functional).
+    releaseFlipBlock();
+    // Quiz / Question / Contact form always open the full, working popup —
+    // both while editing and in the real Preview.
     if (isEngagement) {
       setPopupOpen(true);
       return;
@@ -57,12 +84,28 @@ const RenderInteraction: React.FC<{ id: string; data: ElementData; slideIndex: n
   };
 
   const iconSize = interaction.interactionKind === "link-area" ? 26 : 18;
+  // Hide the selection outline / resize / rotate controls while the popup is
+  // open — otherwise the quick-controls (portaled near the button) render on
+  // top of the popup content instead of behind it.
+  const dragDropSelected = isSelected && !popupOpen;
 
-  return <><CanvasDragDrop id={id} rect={{ x: interaction.x, y: interaction.y, width: interaction.width, height: interaction.height, rotation: interaction.rotation ?? 0 }} isSelected={isSelected} imageExportMode={imageExportMode} clipBounds={clipBounds} onContextMenu={handleContextMenu} onSelect={select} onElementClick={activate} onChange={(rect) => updateElement(id, { x: rect.x, y: rect.y, width: rect.width, height: rect.height, rotation: rect.rotation }, { history: true })}>
+  return <><CanvasDragDrop
+    id={id}
+    rect={{ x: interaction.x, y: interaction.y, width: interaction.width, height: interaction.height, rotation: interaction.rotation ?? 0 }}
+    isSelected={dragDropSelected}
+    imageExportMode={imageExportMode}
+    clipBounds={clipBounds}
+    onContextMenu={handleContextMenu}
+    onSelect={select}
+    onElementClick={activate}
+    onChange={(rect) => updateElement(id, { x: rect.x, y: rect.y, width: rect.width, height: rect.height, rotation: rect.rotation }, { history: true })}
+  >
     <div
       title={interaction.tooltip}
       onMouseEnter={() => !imageExportMode && isEngagement && setShowHint(true)}
       onMouseLeave={() => setShowHint(false)}
+      onPointerDownCapture={holdFlipBlock}
+      onPointerUp={releaseFlipBlock}
       style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: interaction.textAlign === "left" ? "flex-start" : interaction.textAlign === "right" ? "flex-end" : "center", gap: 6, padding: "0 14px", boxSizing: "border-box", background: interaction.backgroundColor ?? "transparent", borderRadius: interaction.borderRadius ?? 0, opacity: interaction.opacity ?? 1, cursor: imageExportMode || isEngagement ? "pointer" : "move" }}
     >
       {interaction.svg && (
@@ -112,16 +155,16 @@ const RenderInteraction: React.FC<{ id: string; data: ElementData; slideIndex: n
   </CanvasDragDrop>
 
   {popupOpen && interaction.interactionKind === "quiz" && (
-    <QuizPopup data={interaction} demo={!imageExportMode} onClose={() => setPopupOpen(false)} />
+    <QuizPopup data={interaction} onClose={() => setPopupOpen(false)} />
   )}
   {popupOpen && interaction.interactionKind === "question" && (
-    <QuestionPopup data={interaction} demo={!imageExportMode} onClose={() => setPopupOpen(false)} />
+    <QuestionPopup data={interaction} onClose={() => setPopupOpen(false)} />
   )}
   {popupOpen && interaction.interactionKind === "contact-form" && (
-    <ContactFormPopup data={interaction} demo={!imageExportMode} onClose={() => setPopupOpen(false)} />
+    <ContactFormPopup data={interaction} onClose={() => setPopupOpen(false)} />
   )}
 
-  <ElementContextMenu position={isSelected ? contextMenuPos : null} elementId={id} onClose={closeContextMenu} /></>;
+  <ElementContextMenu position={dragDropSelected ? contextMenuPos : null} elementId={id} onClose={closeContextMenu} /></>;
 });
 
 RenderInteraction.displayName = "RenderInteraction";

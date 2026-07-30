@@ -7,11 +7,10 @@ import InteractionPopupShell from "./InteractionPopupShell";
 
 interface QuestionPopupProps {
   data: InteractionData;
-  demo?: boolean;
   onClose: () => void;
 }
 
-const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, demo, onClose }) => {
+const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, onClose }) => {
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -25,11 +24,6 @@ const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, demo, onClose }) =>
           <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", textAlign: "center", margin: 0 }}>
             Your response has been submitted
           </p>
-          {demo && (
-            <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", margin: 0 }}>
-              Demo preview — real submissions work in the published preview.
-            </p>
-          )}
           <button
             type="button"
             onClick={() => { setSubmitted(false); setAnswer(""); }}

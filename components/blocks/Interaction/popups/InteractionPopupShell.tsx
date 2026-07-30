@@ -12,7 +12,8 @@ interface InteractionPopupShellProps {
 /**
  * Shared overlay shell for the Quiz / Question / Contact form popups.
  * Renders a dimmed backdrop over the slide + a centered white rounded card,
- * matching the Flipsnack-style engagement popups.
+ * matching the Flipsnack-style engagement popups. Fully interactive in both
+ * the editor and the real Preview.
  */
 const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
   onClose,
@@ -24,7 +25,11 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
       data-element="true"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Clicking the dimmed backdrop itself (not the card) closes the popup.
+        if (e.target === e.currentTarget) onClose();
+      }}
       style={{
         position: "absolute",
         inset: 0,
@@ -34,6 +39,7 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
         justifyContent: "center",
         zIndex: 1000,
         borderRadius: "inherit",
+        pointerEvents: "auto",
       }}
     >
       <div
@@ -67,11 +73,12 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            zIndex: 2,
+            zIndex: 3,
           }}
         >
           <X size={14} />
         </button>
+
         <div
           style={{
             padding: "18px 16px 16px",

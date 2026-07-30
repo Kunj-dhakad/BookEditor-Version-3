@@ -1,0 +1,148 @@
+// "use client";
+
+// import React, { memo, useCallback, useState } from "react";
+// import { useShallow } from "zustand/shallow";
+// import useEditorStore, {
+//   ChartData,
+//   ElementData,
+// } from "@/app/Store/editorStore";
+// import useEditorUIStore from "@/app/Store/useEditorUIStore";
+// import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
+// import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
+// import ChartRenderer from "@/components/blocks/Chart/renderer/ChartRenderer";
+// import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
+
+// type Props = {
+//   id: string;
+//   data: ElementData;
+//   slideIndex: number;
+//   clipBounds?: PageClipBounds;
+// };
+
+// function RenderChart({ id, data, slideIndex, clipBounds }: Props) {
+//   const chart = data as ChartData;
+//   const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
+//   const { updateElement, setActiveElementId, setActiveSlide } = useEditorStore(
+//     useShallow((s) => ({
+//       updateElement: s.updateElement,
+//       setActiveElementId: s.setActiveElementId,
+//       setActiveSlide: s.setActiveSlide,
+//     })),
+//   );
+//   const isSelected = useEditorStore(
+//     useCallback((s) => s.selectedElementIds.includes(id), [id]),
+//   );
+//   const [target, setTarget] = useState<HTMLDivElement | null>(null);
+//   const select = useCallback(() => {
+//     setActiveSlide(slideIndex);
+//     setActiveElementId(id);
+//     useEditorStore.getState().setActiveRightPanel("ChartSettings");
+//     const ui = useEditorUIStore.getState();
+//     ui.setActivePanelType("edit");
+//     ui.setSidebarWidth("edit");
+//   }, [id, setActiveElementId, setActiveSlide, slideIndex]);
+//   if (data.type !== "chart" || chart.hidden) return null;
+//   return (
+//     <>
+//       <CanvasDragDrop
+//         id={id}
+//         rect={{
+//           x: chart.x,
+//           y: chart.y,
+//           width: chart.width,
+//           height: chart.height,
+//           rotation: chart.rotation ?? 0,
+//         }}
+//         isSelected={isSelected}
+//         imageExportMode={imageExportMode}
+//         clipBounds={clipBounds}
+//         onContainerChange={setTarget}
+//         onSelect={select}
+//         onChange={(next) => updateElement(id, next, { history: true })}
+//       >
+//         <ChartRenderer data={chart} />
+//       </CanvasDragDrop>
+//       {isSelected && !imageExportMode && target && (
+//         <FloatingToolBar target={target} />
+//       )}
+//     </>
+//   );
+// }
+// export default memo(RenderChart);
+"use client";
+
+import React, { memo, useCallback, useState } from "react";
+import { useShallow } from "zustand/shallow";
+import useEditorStore, {
+  ChartData,
+  ElementData,
+} from "@/app/Store/editorStore";
+import useEditorUIStore from "@/app/Store/useEditorUIStore";
+import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
+import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
+import ChartRenderer from "@/components/blocks/Chart/renderer/ChartRenderer";
+import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
+import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
+
+type Props = {
+  id: string;
+  data: ElementData;
+  slideIndex: number;
+  clipBounds?: PageClipBounds;
+};
+
+function RenderChart({ id, data, slideIndex, clipBounds }: Props) {
+  const chart = data as ChartData;
+  const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
+  const { updateElement, setActiveElementId, setActiveSlide } = useEditorStore(
+    useShallow((s) => ({
+      updateElement: s.updateElement,
+      setActiveElementId: s.setActiveElementId,
+      setActiveSlide: s.setActiveSlide,
+    })),
+  );
+  const isSelected = useEditorStore(
+    useCallback((s) => s.selectedElementIds.includes(id), [id]),
+  );
+  const [target, setTarget] = useState<HTMLDivElement | null>(null);
+  const { contextMenuPos, handleContextMenu, closeContextMenu } =
+    useElementContextMenu(id, slideIndex);
+  const select = useCallback(() => {
+    setActiveSlide(slideIndex);
+    setActiveElementId(id);
+    useEditorStore.getState().setActiveRightPanel("ChartSettings");
+    const ui = useEditorUIStore.getState();
+    ui.setActivePanelType("edit");
+    ui.setSidebarWidth("edit");
+  }, [id, setActiveElementId, setActiveSlide, slideIndex]);
+  if (data.type !== "chart" || chart.hidden) return null;
+  return (
+    <>
+      <CanvasDragDrop
+        id={id}
+        rect={{
+          x: chart.x,
+          y: chart.y,
+          width: chart.width,
+          height: chart.height,
+          rotation: chart.rotation ?? 0,
+        }}
+        isSelected={isSelected}
+        imageExportMode={imageExportMode}
+        clipBounds={clipBounds}
+        onContainerChange={setTarget}
+        onContextMenu={handleContextMenu}
+        onSelect={select}
+        onChange={(next) => updateElement(id, next, { history: true })}
+      >
+        <ChartRenderer data={chart} />
+      </CanvasDragDrop>
+      <ElementContextMenu
+        position={isSelected ? contextMenuPos : null}
+        elementId={id}
+        onClose={closeContextMenu}
+      />
+    </>
+  );
+}
+export default memo(RenderChart);

@@ -7,13 +7,12 @@ import InteractionPopupShell from "./InteractionPopupShell";
 
 interface QuizPopupProps {
   data: InteractionData;
-  demo?: boolean;
   onClose: () => void;
 }
 
 type AnswerMap = Record<string, string[]>; // questionId -> selected option ids
 
-const QuizPopup: React.FC<QuizPopupProps> = ({ data, demo, onClose }) => {
+const QuizPopup: React.FC<QuizPopupProps> = ({ data, onClose }) => {
   const questions: QuizQuestionItem[] = useMemo(
     () => (data.quizQuestions?.length ? data.quizQuestions : []),
     [data.quizQuestions]
@@ -23,20 +22,29 @@ const QuizPopup: React.FC<QuizPopupProps> = ({ data, demo, onClose }) => {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [phase, setPhase] = useState<"quiz" | "submitted" | "results">("quiz");
 
-  if (!questions.length) {
-    return (
-      <InteractionPopupShell onClose={onClose}>
-        <p style={{ fontSize: 13, color: "#6b7280" }}>
-          Add questions to this quiz from the sidebar on the right.
-        </p>
-      </InteractionPopupShell>
-    );
-  }
+  // All hooks must run unconditionally, in the same order, on every render —
+  // so `current`/`selected`/`score` are computed here (with safe fallbacks
+  // for an empty question list) BEFORE any early `return`.
+  const current = questions.length
+    ? questions[Math.min(step, questions.length - 1)]
+    : undefined;
+  const selected = current ? (answers[current.id] ?? []) : [];
 
-  const current = questions[Math.min(step, questions.length - 1)];
-  const selected = answers[current.id] ?? [];
+  const score = useMemo(() => {
+    let correctCount = 0;
+    questions.forEach((q) => {
+      const correctIds = q.options.filter((o) => o.correct).map((o) => o.id);
+      const chosen = answers[q.id] ?? [];
+      const isCorrect =
+        correctIds.length === chosen.length &&
+        correctIds.every((id) => chosen.includes(id));
+      if (isCorrect) correctCount += 1;
+    });
+    return correctCount;
+  }, [answers, questions]);
 
   const toggleOption = (optionId: string) => {
+    if (!current) return;
     setAnswers((prev) => {
       const already = prev[current.id] ?? [];
       if (current.multiple) {
@@ -63,18 +71,15 @@ const QuizPopup: React.FC<QuizPopupProps> = ({ data, demo, onClose }) => {
     setPhase("quiz");
   };
 
-  const score = useMemo(() => {
-    let correctCount = 0;
-    questions.forEach((q) => {
-      const correctIds = q.options.filter((o) => o.correct).map((o) => o.id);
-      const chosen = answers[q.id] ?? [];
-      const isCorrect =
-        correctIds.length === chosen.length &&
-        correctIds.every((id) => chosen.includes(id));
-      if (isCorrect) correctCount += 1;
-    });
-    return correctCount;
-  }, [answers, questions]);
+  if (!questions.length) {
+    return (
+      <InteractionPopupShell onClose={onClose}>
+        <p style={{ fontSize: 13, color: "#6b7280" }}>
+          Add questions to this quiz from the sidebar on the right.
+        </p>
+      </InteractionPopupShell>
+    );
+  }
 
   if (phase === "submitted") {
     return (
@@ -86,11 +91,6 @@ const QuizPopup: React.FC<QuizPopupProps> = ({ data, demo, onClose }) => {
           <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", textAlign: "center", margin: 0 }}>
             Your response has been submitted
           </p>
-          {demo && (
-            <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", margin: 0 }}>
-              Demo preview — this is how it will work in the published preview.
-            </p>
-          )}
           <button
             type="button"
             onClick={() => setPhase("results")}
@@ -160,6 +160,8 @@ const QuizPopup: React.FC<QuizPopupProps> = ({ data, demo, onClose }) => {
       </InteractionPopupShell>
     );
   }
+
+  if (!current) return null;
 
   return (
     <InteractionPopupShell onClose={onClose}>

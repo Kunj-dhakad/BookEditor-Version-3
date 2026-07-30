@@ -103,6 +103,11 @@ export const useBook = (): BookContextValue => {
   return context;
 };
 
+
+export const useBookOptional = (): BookContextValue | null => {
+  return useContext(BookStateContext);
+};
+
 interface BookStateProviderProps {
   children: ReactNode;
 }

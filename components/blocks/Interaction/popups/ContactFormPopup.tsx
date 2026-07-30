@@ -7,11 +7,10 @@ import InteractionPopupShell from "./InteractionPopupShell";
 
 interface ContactFormPopupProps {
   data: InteractionData;
-  demo?: boolean;
   onClose: () => void;
 }
 
-const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, demo, onClose }) => {
+const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, onClose }) => {
   const fields = data.contactFields?.length
     ? data.contactFields
     : [{ id: "name", label: "Full name", type: "text" as const, placeholder: "Full name", required: true }];
@@ -34,11 +33,6 @@ const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, demo, onClose
           <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", textAlign: "center", margin: 0 }}>
             Thanks! Your form has been submitted
           </p>
-          {demo && (
-            <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", margin: 0 }}>
-              Demo preview — real submissions work in the published preview.
-            </p>
-          )}
         </div>
       </InteractionPopupShell>
     );

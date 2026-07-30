@@ -311,6 +311,12 @@ export const CanvasDragDrop: React.FC<Props> = memo(({
         cursor: isSelected ? "move" : "pointer",
         transition: isDragging ? "none" : undefined,
         overflow: "visible",
+        // The /preview page wraps every element in a `pointer-events-none`
+        // container (so empty page background doesn't intercept scroll/flip
+        // gestures). Elements themselves must explicitly opt back in, or
+        // clicks/drags never reach them at all — in the editor this is a
+        // harmless no-op since there is no such ancestor.
+        pointerEvents: "auto",
       }}
     >
       {isHover && !isSelected && !imageExportMode && (

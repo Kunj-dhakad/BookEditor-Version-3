@@ -93,8 +93,7 @@ export function BookReader() {
       const availableWidth = innerWidth - 180;
       const openSpreadWidth = pageWidth * 2;
 
-      // Fit the open spread to roughly 82% of the available reader area.
-      // Do not cap at 1: small editor pages should open at a useful size.
+   
       const calculatedScale = 0.82 * Math.min(
         availableWidth / openSpreadWidth,
         availableHeight / pageHeight,
