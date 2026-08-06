@@ -11,14 +11,15 @@ import AddVideoPanel from "@/components/blocks/Video/components/AddVideoPanel";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import TemplateAddPanel from "./Template/TemplateAddPanel";
 import WatermarkPanel from "@/components/blocks/Watermark/components";
-import InteractionPanel from "@/components/HomeLayout/AssetsPanel/interactions/InteractionPanel";
+import InteractionPanel from "@/components/blocks/Interaction/components";
 import BookCoverpage from "./BookCover/BookCoverpage";
 
 const MAIN_PANEL_KEYS = [
   "text", "image", "template", "PexelImage", "Elements",
   "AiImage", "UploadImage", "SubtitleTool", "imageReplacePanel",
   "AddButtonPanel", "AddElementPanel", "AiSlideUpdate",
-  "AddVideoPanel", "VideoReplacePanel", "TemplateAddPanel","BookCoverpage", "WatermarkPanel", "AddInteractionsPanel"
+  "AddVideoPanel", "VideoReplacePanel", "TemplateAddPanel",
+  "BookCoverpage", "WatermarkPanel", "AddInteractionsPanel",
 ];
 
 const ToolPanel: React.FC<{ panel?: string | null }> = ({ panel }) => {
@@ -78,7 +79,6 @@ const ToolPanel: React.FC<{ panel?: string | null }> = ({ panel }) => {
         {active === "WatermarkPanel" && <WatermarkPanel />}
         {active === "AddInteractionsPanel" && <InteractionPanel />}
         {active === "BookCoverpage" && <BookCoverpage />}
-        
       </div>
     </div>
   );

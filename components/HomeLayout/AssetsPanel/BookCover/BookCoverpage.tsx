@@ -20,9 +20,9 @@ const BOOK_COVERS: BookCoverItem[] = [
     id: 1,
     title: "Chemistry of Life",
     thumbnail_url:
-      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ChemistryLife_Back.png",
+      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ChemistryLife_Front.png",
     front_thumbnail:
-      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ChemistryLife_Back.png",
+      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ChemistryLife_Front.png",
     back_thumbnail:
       "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ChemistryLife_Back.png",
     json_url:
@@ -50,7 +50,7 @@ const BOOK_COVERS: BookCoverItem[] = [
     front_thumbnail:
       "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ExplainingScience_Front.png",
     back_thumbnail:
-      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ExplainingScience_Front.png",
+      "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ExplainingScience_Back.png",
     json_url:
       "https://kd-presentation-editor.s3.dualstack.us-east-1.amazonaws.com/testing/BookCoverPage/ExplainingScience.json",
     category: "Book Cover",
@@ -80,11 +80,15 @@ interface TemplateJson {
 
 const BookCoverpage: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [selectedCover, setSelectedCover] = useState<BookCoverItem | null>(null);
+  const [selectedCover, setSelectedCover] = useState<BookCoverItem | null>(
+    null,
+  );
   const [frontSlide, setFrontSlide] = useState<Slide | null>(null);
   const [backSlide, setBackSlide] = useState<Slide | null>(null);
   const [loading, setLoading] = useState(false);
-  const [applying, setApplying] = useState<"front" | "back" | "both" | null>(null);
+  const [applying, setApplying] = useState<"front" | "back" | "both" | null>(
+    null,
+  );
 
   // Card click → load JSON & show both pages
   async function openCoverPreview(item: BookCoverItem) {
@@ -118,51 +122,48 @@ const BookCoverpage: React.FC = () => {
   }
 
   // Apply only Front → first page
-function applyFront() {
-  if (!frontSlide) return;
-  setApplying("front");
-  try {
-    useEditorStore.getState().insertSlideAtStart(frontSlide);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setApplying(null);
+  function applyFront() {
+    if (!frontSlide) return;
+    setApplying("front");
+    try {
+      useEditorStore.getState().insertSlideAtStart(frontSlide);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setApplying(null);
+    }
   }
-}
 
-// Apply only Back → last page
-function applyBack() {
-  if (!backSlide) return;
-  setApplying("back");
-  try {
-    useEditorStore.getState().insertSlideAtEnd(backSlide );
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setApplying(null);
+  // Apply only Back → last page
+  function applyBack() {
+    if (!backSlide) return;
+    setApplying("back");
+    try {
+      useEditorStore.getState().insertSlideAtEnd(backSlide);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setApplying(null);
+    }
   }
-}
 
-// Apply both together (first + last)
-function applyBoth() {
-  if (!frontSlide || !backSlide) return;
-  setApplying("both");
-  try {
-    useEditorStore.getState().applyBookCovers(
-      frontSlide ,
-      backSlide 
-    );
-    console.log("Both covers added (first + last)");
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setApplying(null);
+  // Apply both together (first + last)
+  function applyBoth() {
+    if (!frontSlide || !backSlide) return;
+    setApplying("both");
+    try {
+      useEditorStore.getState().applyBookCovers(frontSlide, backSlide);
+      console.log("Both covers added (first + last)");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setApplying(null);
+    }
   }
-}
 
   const filtered = useMemo(() => {
     return BOOK_COVERS.filter((el) =>
-      el.title.toLowerCase().includes(search.toLowerCase())
+      el.title.toLowerCase().includes(search.toLowerCase()),
     );
   }, [search]);
 
@@ -182,7 +183,9 @@ function applyBoth() {
           >
             <FaArrowLeft className="text-sm" />
           </button>
-          <span className="kd-toolPanel-heding-text">{selectedCover.title}</span>
+          <span className="kd-toolPanel-heding-text">
+            {selectedCover.title}
+          </span>
         </div>
 
         <div className="w-full kd-toolPanel-hr-devide-border mb-3" />
@@ -214,7 +217,9 @@ function applyBoth() {
                 }`}
               >
                 <Image
-                  src={selectedCover.front_thumbnail || selectedCover.thumbnail_url}
+                  src={
+                    selectedCover.front_thumbnail || selectedCover.thumbnail_url
+                  }
                   alt="Front Cover"
                   width={160}
                   height={200}
@@ -241,7 +246,9 @@ function applyBoth() {
                 }`}
               >
                 <Image
-                  src={selectedCover.back_thumbnail || selectedCover.thumbnail_url}
+                  src={
+                    selectedCover.back_thumbnail || selectedCover.thumbnail_url
+                  }
                   alt="Back Cover"
                   width={160}
                   height={200}

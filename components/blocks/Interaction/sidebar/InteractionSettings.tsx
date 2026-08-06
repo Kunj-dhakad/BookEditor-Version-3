@@ -9,9 +9,25 @@ import useEditorStore, {
   QuizQuestionItem,
   isInteractionData,
 } from "@/app/Store/editorStore";
+import EmbedMediaSettings from "./EmbedMediaSettings";
+import { NAV_KINDS, SHOP_KINDS } from "../components/constants";
 
 const genId = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+
+const NAV_TITLES: Partial<Record<InteractionData["interactionKind"], string>> = {
+  "nav-prev-page": "Prev page",
+  "nav-next-page": "Next page",
+  "nav-goto-page": "Go to page",
+  "nav-first-page": "First page",
+  "nav-last-page": "Last page",
+};
+
+const SHOP_TITLES: Partial<Record<InteractionData["interactionKind"], string>> = {
+  "product-card": "Product card",
+  "product-button": "Product button",
+  "price-tag": "Price tag",
+};
 
 export default function InteractionSettings() {
   const slides = useEditorStore((s) => s.slides);
@@ -28,13 +44,32 @@ export default function InteractionSettings() {
 
   if (!element || !isInteractionData(element.data)) return null;
   const data = element.data as InteractionData;
+  if (data.interactionKind === "embed-media") return <EmbedMediaSettings />;
   const patch = (value: Partial<InteractionData>) =>
     updateElement(element.id, value, { history: true });
 
   const isQuiz = data.interactionKind === "quiz";
   const isQuestion = data.interactionKind === "question";
   const isContactForm = data.interactionKind === "contact-form";
-  const isEngagement = isQuiz || isQuestion || isContactForm;
+  const isSpotlight = data.interactionKind === "spotlight";
+  const isVideoButton = data.interactionKind === "video-button";
+  const isAudioButton = data.interactionKind === "audio-button";
+  const isSlideshow =
+    data.interactionKind === "slideshow" ||
+    data.interactionKind === "popup-slideshow";
+  const isPopupSlideshow = data.interactionKind === "popup-slideshow";
+  const isNavigation = NAV_KINDS.includes(data.interactionKind);
+  const isGoToPage = data.interactionKind === "nav-goto-page";
+  const isShop = SHOP_KINDS.includes(data.interactionKind);
+  const isProductCard = data.interactionKind === "product-card";
+  const isEngagement =
+    isQuiz ||
+    isQuestion ||
+    isContactForm ||
+    isSpotlight ||
+    isVideoButton ||
+    isAudioButton ||
+    isPopupSlideshow;
 
   /* ==================== QUIZ HELPERS ==================== */
 
@@ -155,16 +190,133 @@ export default function InteractionSettings() {
   return (
     <div className="kd-btn-setting-panel w-full h-full p-3 overflow-y-auto">
       <p className="kd-btn-setting-section-title">
-        {isQuiz ? "Quiz" : isQuestion ? "Question" : isContactForm ? "Contact form" : "Interaction"}
+        {isQuiz
+          ? "Quiz"
+          : isQuestion
+            ? "Question"
+            : isContactForm
+              ? "Contact form"
+              : isSpotlight
+                ? "Spotlight"
+                : isVideoButton
+                  ? "Video button"
+                  : isAudioButton
+                    ? "Audio button"
+                    : isPopupSlideshow
+                      ? "Pop-up slideshow"
+                      : data.interactionKind === "slideshow"
+                        ? "Slideshow"
+                        : isNavigation
+                          ? (NAV_TITLES[data.interactionKind] ?? "Navigation")
+                          : isShop
+                            ? (SHOP_TITLES[data.interactionKind] ?? "Shop")
+                            : "Interaction"}
       </p>
 
-      <label className="kd-btn-setting-label block mb-1">Button label</label>
-      <input
-        className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
-        value={data.text}
-        placeholder="e.g. TAKE QUIZ"
-        onChange={(event) => patch({ text: event.target.value })}
-      />
+      {!isVideoButton && !isAudioButton && !isSlideshow && (
+        <>
+          <label className="kd-btn-setting-label block mb-1">Button label</label>
+          <input
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.text}
+            placeholder="e.g. TAKE QUIZ"
+            onChange={(event) => patch({ text: event.target.value })}
+          />
+        </>
+      )}
+
+      {/* ===================== SLIDESHOW ===================== */}
+      {isSlideshow && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">
+            Images ({(data.slideshowImages ?? []).length})
+          </label>
+          <p className="mb-2 text-[11px] text-gray-500">
+            {isPopupSlideshow
+              ? "Images open in a popup when the reader clicks the button."
+              : "Images play as a carousel directly on the page."}
+          </p>
+          <div className="mb-2 grid grid-cols-3 gap-1.5">
+            {(data.slideshowImages ?? []).map((src, index) => (
+              <div
+                key={`${src}-${index}`}
+                className="relative aspect-square overflow-hidden rounded-md border border-gray-200"
+              >
+                <img src={src} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    patch({
+                      slideshowImages: (data.slideshowImages ?? []).filter(
+                        (_, i) => i !== index,
+                      ),
+                    })
+                  }
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[11px] text-white"
+                  aria-label="Remove image"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <label className="kd-btn-setting-label block mb-1">
+            Add image URL
+          </label>
+          <div className="mb-3 flex gap-1.5">
+            <input
+              className="kd-btn-setting-input min-w-0 flex-1 px-2.5 py-1.5"
+              placeholder="https://example.com/image.jpg"
+              id="slideshow-add-url"
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                const input = event.currentTarget;
+                const value = input.value.trim();
+                if (!value) return;
+                const current = data.slideshowImages ?? [];
+                if (current.includes(value)) return;
+                patch({ slideshowImages: [...current, value] });
+                input.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="rounded-md bg-indigo-600 px-2.5 text-xs font-semibold text-white"
+              onClick={() => {
+                const input = document.getElementById(
+                  "slideshow-add-url",
+                ) as HTMLInputElement | null;
+                const value = input?.value.trim();
+                if (!value) return;
+                const current = data.slideshowImages ?? [];
+                if (current.includes(value)) return;
+                patch({ slideshowImages: [...current, value] });
+                if (input) input.value = "";
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <label className="kd-btn-setting-label block mb-1">
+            Auto-play interval (ms)
+          </label>
+          <input
+            type="number"
+            min={1500}
+            step={500}
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.slideshowInterval ?? 3000}
+            onChange={(event) =>
+              patch({
+                slideshowInterval: Math.max(
+                  1500,
+                  Number(event.target.value) || 3000,
+                ),
+              })
+            }
+          />
+        </div>
+      )}
 
       {/* ===================== AI GENERATE (quiz / question) ===================== */}
       {(isQuiz || isQuestion) && (
@@ -289,6 +441,63 @@ export default function InteractionSettings() {
         </div>
       )}
 
+      {/* ===================== SPOTLIGHT ===================== */}
+      {isSpotlight && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">Spotlight title</label>
+          <input
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.spotlightTitle ?? ""}
+            placeholder="Featured spotlight"
+            onChange={(event) => patch({ spotlightTitle: event.target.value })}
+          />
+          <label className="kd-btn-setting-label block mb-1">Content</label>
+          <textarea
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            rows={4}
+            value={data.spotlightContent ?? ""}
+            placeholder="Add the content shown in the spotlight popup"
+            onChange={(event) => patch({ spotlightContent: event.target.value })}
+          />
+          <label className="kd-btn-setting-label block mb-1">Image URL <span className="text-gray-400">(optional)</span></label>
+          <input
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.spotlightImageUrl ?? ""}
+            placeholder="https://example.com/image.jpg"
+            onChange={(event) => patch({ spotlightImageUrl: event.target.value })}
+          />
+        </div>
+      )}
+
+      {/* ===================== MEDIA BUTTONS ===================== */}
+      {isVideoButton && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">Video URL</label>
+          <input
+            type="url"
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-1"
+            value={data.videoUrl ?? ""}
+            placeholder="YouTube, Vimeo, or direct video URL"
+            onChange={(event) => patch({ videoUrl: event.target.value })}
+          />
+          <p className="mb-3 text-[11px] text-gray-500">The video opens in a popup when the reader clicks this button.</p>
+        </div>
+      )}
+
+      {isAudioButton && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">Audio URL</label>
+          <input
+            type="url"
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-1"
+            value={data.audioUrl ?? ""}
+            placeholder="https://example.com/audio.mp3"
+            onChange={(event) => patch({ audioUrl: event.target.value })}
+          />
+          <p className="mb-3 text-[11px] text-gray-500">Clicking the button plays audio in place; its label changes to Pause audio.</p>
+        </div>
+      )}
+
       {/* ===================== CONTACT FORM ===================== */}
       {isContactForm && (
         <div className="mb-3">
@@ -381,10 +590,73 @@ export default function InteractionSettings() {
         </div>
       )}
 
-      {/* ===================== NON-ENGAGEMENT (link / tag / social / caption) ===================== */}
-      {!isEngagement && (
+      {/* ===================== NAVIGATION ===================== */}
+      {isNavigation && (
+        <div className="mb-3">
+          {isGoToPage ? (
+            <>
+              <label className="kd-btn-setting-label block mb-1">
+                Target page number
+              </label>
+              <input
+                type="number"
+                min={1}
+                className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-1"
+                value={data.navTargetPage ?? 1}
+                onChange={(event) =>
+                  patch({
+                    navTargetPage: Math.max(
+                      1,
+                      Number(event.target.value) || 1,
+                    ),
+                  })
+                }
+              />
+              <p className="text-[11px] text-gray-500">
+                Clicking this button jumps the reader straight to this page
+                number in preview.
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] text-gray-500">
+              This button automatically navigates the reader (
+              {NAV_TITLES[data.interactionKind]?.toLowerCase()}) — no link
+              needed. It only works while previewing the book.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ===================== SHOP (product card / button / price tag) ===================== */}
+      {isProductCard && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">Price</label>
+          <input
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.productPrice ?? ""}
+            placeholder="e.g. $19.99"
+            onChange={(event) => patch({ productPrice: event.target.value })}
+          />
+          <label className="kd-btn-setting-label block mb-1">
+            Image URL <span className="text-gray-400">(optional)</span>
+          </label>
+          <input
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+            value={data.productImageUrl ?? ""}
+            placeholder="https://example.com/product.jpg"
+            onChange={(event) =>
+              patch({ productImageUrl: event.target.value })
+            }
+          />
+        </div>
+      )}
+
+      {/* ===================== NON-ENGAGEMENT (link / tag / social / caption / shop) ===================== */}
+      {!isEngagement && !isSlideshow && !isNavigation && (
         <>
-          <label className="kd-btn-setting-label block mb-1">URL</label>
+          <label className="kd-btn-setting-label block mb-1">
+            {isShop ? "Product link" : "URL"}
+          </label>
           <input
             className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
             value={data.url ?? data.link ?? ""}

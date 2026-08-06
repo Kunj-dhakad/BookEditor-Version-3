@@ -1,3 +1,95 @@
+// "use client";
+
+// import React from "react";
+// import { X } from "lucide-react";
+
+// interface InteractionPopupShellProps {
+//   onClose: () => void;
+//   children: React.ReactNode;
+//   maxWidth?: number;
+// }
+
+
+// const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
+//   onClose,
+//   children,
+//   maxWidth = 300,
+// }) => {
+//   return (
+//     <div
+//       data-element="true"
+//       onMouseDown={(e) => e.stopPropagation()}
+//       onPointerDown={(e) => e.stopPropagation()}
+//       onClick={(e) => {
+//         e.stopPropagation();
+//         if (e.target === e.currentTarget) onClose();
+//       }}
+//       style={{
+//         position: "absolute",
+//         inset: 0,
+//         background: "rgba(15, 15, 20, 0.35)",
+//         display: "flex",
+//         alignItems: "center",
+//         justifyContent: "center",
+//         zIndex: 1000,
+//         borderRadius: "inherit",
+//         pointerEvents: "auto",
+//       }}
+//     >
+//       <div
+//         style={{
+//           position: "relative",
+//           width: `min(${maxWidth}px, 92%)`,
+//           maxHeight: "88%",
+//           background: "#ffffff",
+//           borderRadius: 14,
+//           boxShadow: "0 20px 45px rgba(0,0,0,0.25)",
+//           display: "flex",
+//           flexDirection: "column",
+//           overflow: "hidden",
+//         }}
+//       >
+//         <button
+//           type="button"
+//           onClick={onClose}
+//           aria-label="Close"
+//           style={{
+//             position: "absolute",
+//             top: 10,
+//             right: 10,
+//             width: 24,
+//             height: 24,
+//             borderRadius: "50%",
+//             border: "none",
+//             background: "#f3f4f6",
+//             color: "#374151",
+//             display: "flex",
+//             alignItems: "center",
+//             justifyContent: "center",
+//             cursor: "pointer",
+//             zIndex: 3,
+//           }}
+//         >
+//           <X size={14} />
+//         </button>
+
+//         <div
+//           style={{
+//             padding: "18px 16px 16px",
+//             overflowY: "auto",
+//             fontFamily: "Inter, sans-serif",
+//           }}
+//         >
+//           {children}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default InteractionPopupShell;
+
+
 "use client";
 
 import React from "react";
@@ -9,12 +101,7 @@ interface InteractionPopupShellProps {
   maxWidth?: number;
 }
 
-/**
- * Shared overlay shell for the Quiz / Question / Contact form popups.
- * Renders a dimmed backdrop over the slide + a centered white rounded card,
- * matching the Flipsnack-style engagement popups. Fully interactive in both
- * the editor and the real Preview.
- */
+
 const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
   onClose,
   children,
@@ -27,7 +114,6 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
-        // Clicking the dimmed backdrop itself (not the card) closes the popup.
         if (e.target === e.currentTarget) onClose();
       }}
       style={{
@@ -45,14 +131,16 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
       <div
         style={{
           position: "relative",
-          width: `min(${maxWidth}px, 92%)`,
-          maxHeight: "88%",
+          width: `min(${maxWidth}px, 94%)`,
+          maxWidth: "100%",
+          maxHeight: "min(88%, 90vh)",
           background: "#ffffff",
           borderRadius: 14,
           boxShadow: "0 20px 45px rgba(0,0,0,0.25)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         <button
@@ -61,10 +149,10 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
           aria-label="Close"
           style={{
             position: "absolute",
-            top: 10,
-            right: 10,
-            width: 24,
-            height: 24,
+            top: 8,
+            right: 8,
+            width: 28,
+            height: 28,
             borderRadius: "50%",
             border: "none",
             background: "#f3f4f6",
@@ -81,9 +169,11 @@ const InteractionPopupShell: React.FC<InteractionPopupShellProps> = ({
 
         <div
           style={{
-            padding: "18px 16px 16px",
+            padding: "clamp(12px, 3vw, 18px) clamp(12px, 3vw, 16px)",
             overflowY: "auto",
+            overflowX: "hidden",
             fontFamily: "Inter, sans-serif",
+            minWidth: 0,
           }}
         >
           {children}

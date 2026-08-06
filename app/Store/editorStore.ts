@@ -263,7 +263,19 @@ export type ChartData = Transform & Border & Shadow & {
   hidden?: boolean;
 };
 
-export type InteractionKind = "link-area" | "link-button" | "tag" | "caption" | "social" | "quiz" | "question" | "contact-form";
+export type InteractionKind = "link-area" | "link-button" | "tag" | "caption" | "social" | "quiz" | "question" | "contact-form" | "embed-media" | "spotlight"
+  | "video-button"
+  | "audio-button"
+  | "slideshow"
+  | "popup-slideshow"
+  | "nav-prev-page"
+  | "nav-next-page"
+  | "nav-goto-page"
+  | "nav-first-page"
+  | "nav-last-page"
+  | "product-card"
+  | "product-button"
+  | "price-tag";
 
 export type QuizOption = {
   id: string;
@@ -284,9 +296,10 @@ export type ContactFormField = {
   label: string;
   type: ContactFieldType;
   placeholder?: string;
-  required?: boolean;
+  required?: boolean;  
 };
 
+ 
 export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fontSize" | "fontFamily" | "fontWeight" | "backgroundColor" | "textColor" | "borderColor" | "borderWidth" | "borderRadius" | "gradientFrom" | "gradientTo" | "gradientDirection" | "icon" | "iconPosition" | "letterSpacing" | "textTransform" | "fontStyle" | "textDecorationLine" | "textAlign" | "strokeStyle" | "shadowPreset" | "opacity"> & {
   type: "interaction";
   interactionKind: InteractionKind;
@@ -301,6 +314,13 @@ export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fo
   iconColor?: string;
   hoverColor?: string;
   padding?: number;
+  embedUrl?: string;
+  provider?: string;
+  renderMode?: "image" | "video" | "iframe" | "external";
+  thumbnail?: string;
+  autoplay?: boolean;
+  controls?: boolean;
+  allowFullscreen?: boolean;
 
   // ===== Quiz =====
   quizTitle?: string;
@@ -319,8 +339,28 @@ export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fo
   privacyPolicyLink?: string;
   showMarketingOptIn?: boolean;
   marketingOptInText?: string;
-};
 
+  // ===== Spotlight =====
+  spotlightTitle?: string;
+  spotlightContent?: string;
+  spotlightImageUrl?: string;
+
+  // ===== Video / Audio button =====
+  videoUrl?: string;
+  audioUrl?: string;
+
+  // ===== Slideshow =====
+  slideshowImages?: string[];
+  slideshowInterval?: number;
+
+  // ===== Navigation =====
+  navTargetPage?: number;
+
+  // ===== Shop =====
+  productName?: string;
+  productPrice?: string;
+  productImageUrl?: string;
+};
 export const isInteractionData = (data: ElementData): data is InteractionData =>
   data.type === "interaction";
 
@@ -941,7 +981,7 @@ const useEditorStore = create<EditorStore>()(
               data: { ...el.data },
             })),
           };
-          state.slides.unshift(newSlide); // first position
+          state.slides.unshift(newSlide);
           state.activeSlide = 0;
           state.activeElementId = null;
           state.selectedElementIds = [];
@@ -959,7 +999,7 @@ const useEditorStore = create<EditorStore>()(
               data: { ...el.data },
             })),
           };
-          state.slides.push(newSlide); // last position
+          state.slides.push(newSlide);
           state.activeSlide = state.slides.length - 1;
           state.activeElementId = null;
           state.selectedElementIds = [];
@@ -997,14 +1037,6 @@ const useEditorStore = create<EditorStore>()(
           state.selectedElementIds = [];
         });
       },
-
-
-
-
-
-
-
-
     })),
     {
       name: "editor-store",
