@@ -245,7 +245,6 @@ import {
   ArrowUpRight,
   ChevronsLeft,
   ChevronsRight,
-  CreditCard,
 } from "lucide-react";
 import {
   FaTiktok,

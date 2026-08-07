@@ -13,18 +13,13 @@ import {
   social,
   multimedia,
   shop,
-  otherSquare,
-  otherWide,
 } from "./constants";
 import { useAddInteraction } from "./useAddInteraction";
 import InteractionSection from "./InteractionSection";
 import SocialSection from "./SocialSection";
-import InteractionCard from "./InteractionCard";
-import WideInteractionCard from "./WideInteractionCard";
 import EmbedMedia from "./InteractionDetailView/EmbedMedia/EmbedMedia";
 import Slideshow from "./InteractionDetailView/Slideshow/Slideshow";
 import ShopDetail from "./InteractionDetailView/Shop/ShopDetail";
-
 export { interactionIconSvg } from "./icons";
 
 const InteractionPanel: React.FC = () => {

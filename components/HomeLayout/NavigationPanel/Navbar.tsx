@@ -1,12 +1,11 @@
 import React from "react";
 import useEditorStore from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
-import { ButtonIcon, ElementsIcon, ImageIcon, KdWaterMarkIcon, TemplateIcon, TextIcon, VideoIcon } from "@/lib/icon/icons";
-import { FaBookReader } from "react-icons/fa";
+import { ButtonIcon, ElementsIcon, ImageIcon, KdCoverpageIcon, KdWaterMarkIcon, TemplateIcon, TextIcon, VideoIcon } from "@/lib/icon/icons";
 
 const NAV_ITEMS = [
     { panel: "TemplateAddPanel", icon: <TemplateIcon />, label: "Template" },
-    { panel: "BookCoverpage", icon: <FaBookReader  />, label: "Coverpage" },
+    { panel: "BookCoverpage", icon: <KdCoverpageIcon  />, label: "Coverpage" },
     { panel: "text", icon: <TextIcon />, label: "Text" },
     { panel: "image", icon: <ImageIcon />, label: "Images" },
     { panel: "AddButtonPanel", icon: <ButtonIcon />, label: "Buttons" },
@@ -42,7 +41,7 @@ const Navbar: React.FC = () => {
 
     return (
         <aside className="flex flex-col items-center w-full h-full kd-nav-btn-container">
-            <div className="flex flex-col h-full p-1 gap-1.5 mt-2">
+            <div className="flex flex-col h-full p-1 gap-1 mt-1.5">
                 {NAV_ITEMS.map(({ panel, icon, label }) => {
                     const isActive = active === panel;
                     return (
