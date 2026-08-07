@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo } from "react";
 import useEditorStore, { TextData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
-import { getChapters } from "@/lib/toc/ChapterManager";
-import { paginateBookIndex } from "@/lib/toc/BookIndexPaginator";
+import { getChapters } from "@/components/blocks/Index/lib/ChapterManager";
+import { paginateBookIndex } from "@/components/blocks/Index/lib/BookIndexPaginator";
 import TextDragAndDrop, {
   TextTransformRect,
 } from "@/components/blocks/Text/editor/TextDragAndDrop";
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
+import TocIndexBody from "@/components/blocks/Index/renderer/TocIndexBody";
+import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
+import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
 
 type Props = {
   id: string;
@@ -33,7 +36,9 @@ export default function RenderBookIndex({
     (s) => s.toggleSelectedElementId,
   );
   const updateElement = useEditorStore((s) => s.updateElement);
+  const updateChapterTitle = useEditorStore((s) => s.updateChapterTitle);
   const syncBookIndex = useEditorStore((s) => s.syncBookIndex);
+  const { contextMenuPos, handleContextMenu, closeContextMenu } = useElementContextMenu(id, slideIndex);
   useEffect(() => {
     if (!data.indexRootId) syncBookIndex(id);
   }, [data.indexRootId, id, slides, syncBookIndex]);
@@ -89,9 +94,6 @@ export default function RenderBookIndex({
     height: data.height,
     rotation: data.rotation ?? 0,
   };
-  const leader = data.tocLeader ?? ".";
-  const spacing = data.tocSpacing ?? 8;
-  const rightAligned = data.tocPageAlignment !== "left";
   const pageNumber = data.indexPage ?? 0;
   const page = useMemo(
     () =>
@@ -113,84 +115,36 @@ export default function RenderBookIndex({
       clipBounds={clipBounds}
     >
       <section
+        onContextMenu={handleContextMenu}
         style={{
           width: "100%",
           height: "100%",
           boxSizing: "border-box",
           overflow: "hidden",
+          background: data.backgroundColor || "transparent",
           color: data.color ?? "#111827",
           fontFamily: data.fontFamily,
           fontSize: data.fontSize ?? 14,
           fontWeight: data.fontWeight ?? 400,
           lineHeight: data.lineHeight ?? 1.4,
-          padding: `${data.tocMarginTop ?? 0}px ${data.tocIndent ?? 0}px ${data.tocMarginBottom ?? 0}px`,
+          padding: `${data.tocMarginTop || 16}px ${data.tocIndent || 16}px ${data.tocMarginBottom || 16}px`,
         }}
       >
-        <div
-          style={{
-            fontSize: "1.25em",
-            fontWeight: 700,
-            marginBottom: spacing * 1.5,
-            textAlign: data.align ?? "left",
-          }}
-        >
-          {pageNumber
-            ? `${data.tocTitle || "INDEX"} (continued)`
-            : data.tocTitle || "INDEX"}
-        </div>
-        {chapters.length === 0 && (
-          <div style={{ opacity: 0.55 }}>
-            Add Chapter elements to build your index.
-          </div>
-        )}
-        {page.entries.map((chapter) => (
-          <button
-            key={chapter.elementId}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              goTo(chapter.startPage);
-            }}
-            style={{
-              cursor: "pointer",
-              color: "inherit",
-              font: "inherit",
-              background: "none",
-              border: 0,
-              padding: 0,
-              marginBottom: spacing,
-              width: "100%",
-              display: "flex",
-              textAlign: "left",
-              alignItems: "baseline",
-            }}
-          >
-            <span>{chapter.displayTitle}</span>
-            <span
-              aria-hidden
-              style={{
-                flex: 1,
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-                margin: "0 .35em",
-                opacity: 0.7,
-              }}
-            >
-              {leader.repeat(80)}
-            </span>
-            <span
-              style={{
-                minWidth: "2ch",
-                textAlign: rightAligned ? "right" : "left",
-              }}
-            >
-              {data.tocShowRanges
-                ? `${chapter.startPage}â€“${chapter.endPage}`
-                : chapter.startPage}
-            </span>
-          </button>
-        ))}
+        <TocIndexBody
+          data={data}
+          page={page}
+          pageNumber={pageNumber}
+          noChapters={chapters.length === 0}
+          onEntryClick={goTo}
+          editable
+          onRenameChapter={updateChapterTitle}
+        />
       </section>
+      <ElementContextMenu
+        position={selected ? contextMenuPos : null}
+        elementId={id}
+        onClose={closeContextMenu}
+      />
     </TextDragAndDrop>
   );
 }

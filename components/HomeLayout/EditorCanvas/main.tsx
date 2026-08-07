@@ -585,7 +585,13 @@ useEffect(() => {
         return;
       }
       if (type === "book-index") {
-        addElement({ type: "text", bookRole: "index", text: "INDEX", tocTitle: "INDEX", tocLeader: ".", tocPageAlignment: "right", tocShowRanges: false, tocSpacing: 8, tocIndent: 0, x, y, width: 270, height: 240, rotation: 0, opacity: 1, zIndex: 1, fontFamily: "Plus Jakarta Sans", fontSize: 14, fontWeight: 400, lineHeight: 1.4, textAlign: "left", letterSpacing: 0 });
+        const cw = canvasWidth || 350;
+        const ch = canvasHeight || 434;
+        const boxWidth = Math.round(cw * 0.82);
+        const boxHeight = Math.round(ch * 0.65);
+        const placedX = Math.min(Math.max(0, x - boxWidth / 2), Math.max(0, cw - boxWidth));
+        const placedY = Math.min(Math.max(0, y - boxHeight / 2), Math.max(0, ch - boxHeight));
+        addElement({ type: "text", bookRole: "index", text: "INDEX", tocTitle: "INDEX", tocLeader: ".", tocPageAlignment: "right", tocShowRanges: false, tocSpacing: 8, tocIndent: 16, tocMarginTop: 16, tocMarginBottom: 16, tocStyle: "classic", tocAccentColor: "#6366f1", x: placedX, y: placedY, width: boxWidth, height: boxHeight, rotation: 0, opacity: 1, zIndex: 1, fontFamily: "Plus Jakarta Sans", fontSize: 14, fontWeight: 400, lineHeight: 1.4, textAlign: "left", letterSpacing: 0 });
         return;
       }
       if (type.startsWith("text")) {

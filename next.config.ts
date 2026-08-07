@@ -1,6 +1,42 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
+  },
+  webpack(config) {
+    const svgRule = config.module.rules.find((rule: { test?: RegExp }) =>
+      rule.test?.test?.(".svg"),
+    );
+
+    if (svgRule) {
+      svgRule.exclude = /\.svg$/i;
+    }
+
+    config.module.rules.push({
+      test: /\.svg$/i,
+      issuer: /\.[jt]sx?$/,
+      use: [
+        {
+          loader: "@svgr/webpack",
+          options: {
+            icon: true,
+            svgo: true,
+            svgoConfig: {
+              plugins: [{ name: "removeViewBox", active: false }],
+            },
+          },
+        },
+      ],
+    });
+
+    return config;
+  },
   images: {
     domains: ["images.pexels.com",
       "cdn.prezentaai.com",

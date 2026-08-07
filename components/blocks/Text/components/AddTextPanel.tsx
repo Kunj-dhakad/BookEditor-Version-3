@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import useEditorStore, { ElementData } from "@/app/Store/editorStore";
 import Image from "next/image";
+import BookIndexStyleGallery from "@/components/blocks/Index/components/BookIndexStyleGallery";
+import { TOC_STYLE_PRESETS, TocStyleKey } from "@/components/blocks/Index/lib/tocStyles";
 type TextPresetKey = "text-h1" | "text-h2" | "text-h3" | "text-p";
 
 type TextPreset = {
@@ -103,6 +105,7 @@ const AddTextPanel = () => {
 
   const [templates, setTemplates] = useState<TextTemplate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [panelView, setPanelView] = useState<"list" | "index-styles">("list");
 
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
@@ -138,7 +141,7 @@ const AddTextPanel = () => {
       chapterSubtitle: "",
       chapterAutoNumber: true,
       x: defaultX - 135,
-      y: defaultY - 35,
+      y: 32,
       width: 270,
       height: 70,
       rotation: 0,
@@ -152,7 +155,15 @@ const AddTextPanel = () => {
       letterSpacing: 0,
     });
 
-  const addBookIndex = () =>
+  const addBookIndex = (styleKey: TocStyleKey = "classic") => {
+    const preset = TOC_STYLE_PRESETS.find((s) => s.key === styleKey)?.preset ?? {};
+    const cw = canvasWidth || 350;
+    const ch = canvasHeight || 434;
+    // Size relative to the actual page so the index always sits centered
+    // with balanced margins, instead of a fixed box that can look off on
+    // custom/larger canvases.
+    const boxWidth = Math.round(cw * 0.82);
+    const boxHeight = Math.round(ch * 0.65);
     addElement({
       type: "text",
       bookRole: "index",
@@ -162,11 +173,14 @@ const AddTextPanel = () => {
       tocPageAlignment: "right",
       tocShowRanges: false,
       tocSpacing: 8,
-      tocIndent: 0,
-      x: defaultX - 135,
-      y: defaultY - 120,
-      width: 270,
-      height: 240,
+      tocIndent: 16,
+      tocMarginTop: 16,
+      tocMarginBottom: 16,
+      tocStyle: styleKey,
+      x: (cw - boxWidth) / 2,
+      y: (ch - boxHeight) / 2,
+      width: boxWidth,
+      height: boxHeight,
       rotation: 0,
       opacity: 1,
       zIndex: 1,
@@ -176,7 +190,9 @@ const AddTextPanel = () => {
       lineHeight: 1.4,
       textAlign: "left",
       letterSpacing: 0,
+      ...preset,
     });
+  };
 
   const addTextByTemplate = async (template: TextTemplate) => {
     try {
@@ -227,6 +243,18 @@ const AddTextPanel = () => {
     getTemplates();
   }, []);
 
+  if (panelView === "index-styles") {
+    return (
+      <BookIndexStyleGallery
+        onBack={() => setPanelView("list")}
+        onSelect={(styleKey) => {
+          addBookIndex(styleKey);
+          setPanelView("list");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="kd-text-add-panel-container">
       <div className="kd-text-add-panel-fixed">
@@ -257,7 +285,7 @@ const AddTextPanel = () => {
               fontWeight: 600,
               fontFamily: "Plus Jakarta Sans",
             }}
-            onClick={addBookIndex}
+            onClick={() => setPanelView("index-styles")}
             onDragStart={handleDragStart}
           />
           <DefaultStyleCard

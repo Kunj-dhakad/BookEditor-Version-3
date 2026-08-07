@@ -176,18 +176,20 @@ import ImageReplacePanel from "@/components/blocks/Image/sidebar/ImageReplacePan
 import TextColorPanel from "@/components/blocks/Text/sidebar/TextColorPanel";
 import TableSettings from "@/components/blocks/Table/sidebar/TableSettings";
 import ChartSettings from "@/components/blocks/Chart/sidebar/ChartSettings";
+import IndexSettingsPanel from "@/components/blocks/Index/sidebar/IndexSettingsPanel";
 
 // EDIT PANEL KEYS
 const EDIT_PANEL_KEYS = [
   "TextColorPanel", "CanvasBgBar", "FontFamilyPanel", "ItemPositionPanel", "TextBgColorPanel", "ImageCrop", "ImageEffectsPanel"
   , "ImageStrokeColorPanel", "AskAiPanel", "BtnMoreSetting", "InteractionSettings",
-  "ShapeBkgColorPanel", "BtnBorderColor", "ButtonEditBGColor", "VideoReplacePanel", "imageReplacePanel", "TableSettings", "ChartSettings"];
+  "ShapeBkgColorPanel", "BtnBorderColor", "ButtonEditBGColor", "VideoReplacePanel", "imageReplacePanel", "TableSettings", "ChartSettings", "IndexSettingsPanel"];
 const EDIT_PANEL_TITLES: Record<string, string> = {
   TextColorPanel: "Text Color",
   TextBgColorPanel: "Text Background",
   CanvasBgBar: "Canvas Background",
   FontFamilyPanel: "Font Family",
   ItemPositionPanel: "Position",
+  IndexSettingsPanel: "Index Design & Settings",
 
   ImageCrop: "Crop Image",
   ImageEffectsPanel: "Image Effects",
@@ -227,6 +229,7 @@ const PANEL_TYPES: Record<string, string[]> = {
   ItemPositionPanel: ["text", "image", "shape", "svg", "button", "interaction", "video", "watermark", "table"],
   TableSettings: ["table"],
   ChartSettings: ["chart"],
+  IndexSettingsPanel: ["text"],
 };
 
 const CANVAS_LEVEL_PANELS = ["CanvasBgBar", "AskAiPanel"];
@@ -304,6 +307,7 @@ const EditToolPanel: React.FC = () => {
         {active === "TextBgColorPanel" && <TextBgColorPanel />}
         {active === "TableSettings" && <TableSettings />}
         {active === "ChartSettings" && <ChartSettings />}
+        {active === "IndexSettingsPanel" && <IndexSettingsPanel />}
       </div>
     </div> 
   );
