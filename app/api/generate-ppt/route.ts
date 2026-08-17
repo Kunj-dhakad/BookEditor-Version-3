@@ -267,6 +267,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import PptxGenJS from "pptxgenjs";
+import { interactionFlatLabel } from "@/components/blocks/Interaction/renderer/interactionLabel";
 import {
     S3Client,
     PutObjectCommand,
@@ -519,6 +520,48 @@ export async function POST(req: NextRequest) {
                     }
 
                     sld.addText(data.text || "", textOptions);
+                }
+
+                // ── INTERACTION ──────────────────────────────────────────────
+                // A deck cannot run quizzes or page-flips, but the element was
+                // being dropped entirely — so the slide lost the button, its
+                // label and its link. Export it as a shape + label + hyperlink.
+                if (data.type === "interaction") {
+                    const shapeOptions: Record<string, unknown> = {
+                        x: pxToIn(data.x),
+                        y: pxToIn(data.y),
+                        w: pxToIn(data.width),
+                        h: pxToIn(data.height),
+                        line: { type: "none" },
+                    };
+                    if (data.backgroundColor) {
+                        shapeOptions.fill = { color: data.backgroundColor.replace("#", "") };
+                    }
+                    if (data.borderRadius) {
+                        shapeOptions.rectRadius = pxToIn(Number(data.borderRadius) || 0);
+                    }
+                    sld.addShape(pptx.ShapeType.rect, shapeOptions);
+
+                    const label = interactionFlatLabel(data);
+                    if (label) {
+                        const textOptions: Record<string, unknown> = {
+                            x: pxToIn(data.x),
+                            y: pxToIn(data.y),
+                            w: pxToIn(data.width),
+                            h: pxToIn(data.height),
+                            fontSize: (data.fontSize || 13) * 0.75,
+                            fontFace: data.fontFamily,
+                            color: data.textColor?.replace("#", "") || "FFFFFF",
+                            align: "center",
+                            valign: "middle",
+                            wrap: false,
+                        };
+                        const href = data.url || data.link;
+                        if (typeof href === "string" && /^https?:\/\//i.test(href)) {
+                            textOptions.hyperlink = { url: href };
+                        }
+                        sld.addText(label, textOptions);
+                    }
                 }
 
                 // ── IMAGE ────────────────────────────────────────────────────

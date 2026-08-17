@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { InteractionData, QuizQuestionItem } from "@/app/Store/editorStore";
 import InteractionPopupShell from "./InteractionPopupShell";
+import { submitInteractionResponse } from "./submitResponse";
 
 interface QuizPopupProps {
   data: InteractionData;
@@ -60,9 +61,26 @@ const QuizPopup: React.FC<QuizPopupProps> = ({ data, onClose }) => {
   const goNext = () => {
     if (step < questions.length - 1) {
       setStep((s) => s + 1);
-    } else {
-      setPhase("submitted");
+      return;
     }
+    setPhase("submitted");
+    // Fire-and-forget: the reader already sees their result, and a webhook
+    // failure must not block it. Only sends when the author configured a URL.
+    void submitInteractionResponse(data.submitUrl, {
+      kind: "quiz",
+      title: data.quizTitle,
+      answers: {
+        score,
+        total: questions.length,
+        responses: questions.map((question) => ({
+          question: question.question,
+          chosen: (answers[question.id] ?? []).map(
+            (optionId) =>
+              question.options.find((option) => option.id === optionId)?.text ?? optionId,
+          ),
+        })),
+      },
+    });
   };
 
   const retake = () => {

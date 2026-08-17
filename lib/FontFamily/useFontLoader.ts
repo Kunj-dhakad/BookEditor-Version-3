@@ -1,22 +1,3 @@
-// // app/hooks/useFontLoader.ts
-// const loadedFonts = new Set<string>();
-
-// export function loadGoogleFont(fontFamily: string): void {
-//   if (!fontFamily || loadedFonts.has(fontFamily)) return;
-//   loadedFonts.add(fontFamily);
-  
-//   const slug = fontFamily.trim().replace(/ /g, "+");
-//   const link = document.createElement("link");
-//   link.rel = "stylesheet";
-//   link.href = `https://fonts.googleapis.com/css2?family=${slug}:ital,wght@0,400;0,700;1,400&display=swap`;
-//   document.head.appendChild(link);
-// }
-
-// export function useLoadFontOnMount(fontFamily: string | undefined) {
-//   if (typeof window !== "undefined" && fontFamily) {
-//     loadGoogleFont(fontFamily);
-//   }
-// }
 
 const loadedFonts = new Set<string>();
 const fontPromises = new Map<string, Promise<void>>();

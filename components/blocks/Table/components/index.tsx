@@ -1,23 +1,94 @@
 "use client";
-import React from "react";
-import { ArrowLeft, Table2 } from "lucide-react";
+
+import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import useEditorStore from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
+import TableThumb from "@/components/blocks/Table/components/TableThumb";
+import {
+  styleFromPreset,
+  tableLayouts,
+  tablePresets,
+  type TablePreset,
+} from "@/components/blocks/Table/lib/tableThemes";
 
-export const tablePresets = [
-  { id: "custom", title: "Custom Table", rows: 3, columns: 3 },
-];
+const MAX_ROWS = 6;
+const MAX_COLUMNS = 6;
+
+/** Word-style hover grid: drag the eye across it, click a style to insert. */
+function SizePicker({
+  rows,
+  columns,
+  onPick,
+}: {
+  rows: number;
+  columns: number;
+  onPick: (rows: number, columns: number) => void;
+}) {
+  const [hover, setHover] = useState<{ rows: number; columns: number } | null>(
+    null,
+  );
+  const active = hover ?? { rows, columns };
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Size
+        </span>
+        <span className="text-xs font-medium text-slate-700 tabular-nums">
+          {active.rows} × {active.columns}
+        </span>
+      </div>
+      <div
+        className="grid w-max gap-1"
+        style={{ gridTemplateColumns: `repeat(${MAX_COLUMNS}, 16px)` }}
+        onMouseLeave={() => setHover(null)}
+      >
+        {Array.from({ length: MAX_ROWS * MAX_COLUMNS }, (_, index) => {
+          const row = Math.floor(index / MAX_COLUMNS) + 1;
+          const column = (index % MAX_COLUMNS) + 1;
+          const on = row <= active.rows && column <= active.columns;
+          return (
+            <button
+              key={index}
+              type="button"
+              aria-label={`${row} by ${column}`}
+              onMouseEnter={() => setHover({ rows: row, columns: column })}
+              onFocus={() => setHover({ rows: row, columns: column })}
+              onClick={() => {
+                onPick(row, column);
+                setHover(null);
+              }}
+              className={`h-4 w-4 rounded-[3px] border transition ${
+                on
+                  ? "border-violet-500 bg-violet-200"
+                  : "border-slate-200 bg-slate-50 hover:border-violet-300"
+              }`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function TableData() {
   const addElement = useEditorStore((s) => s.addElement);
-  const { slides, activeSlide } = useEditorStore();
+  const slides = useEditorStore((s) => s.slides);
+  const activeSlide = useEditorStore((s) => s.activeSlide);
   const back = useEditorUIStore((s) => s.setActiveElementsCategory);
+  const [size, setSize] = useState({ rows: 3, columns: 3 });
   const canvas = slides[activeSlide];
-  const insert = () => {
-    const width = Math.min(400, Math.max(120, (canvas?.width ?? 432) - 32));
-    const height = Math.min(180, Math.max(90, (canvas?.height ?? 240) - 32));
-    const rows = 3;
-    const columns = 3;
+
+  const insert = (preset: TablePreset) => {
+    const { rows, columns } = size;
+    const width = Math.min(520, Math.max(120, (canvas?.width ?? 432) - 32));
+    // Rows get a readable minimum height rather than one squeezed share of a
+    // fixed box, so a 6-row table does not arrive as six hairlines.
+    const height = Math.min(
+      Math.max(90, (canvas?.height ?? 240) - 32),
+      Math.max(90, rows * 44),
+    );
     addElement({
       type: "table",
       x: Math.max(16, ((canvas?.width ?? width) - width) / 2),
@@ -27,30 +98,35 @@ export default function TableData() {
       rotation: 0,
       rows,
       columns,
+      styleId: preset.id,
       cells: Array.from({ length: rows }, () =>
         Array.from({ length: columns }, () => ({ text: "" })),
       ),
-      style: {
-        borderColor: "#000",
-        borderWidth: 1,
-        background: "#fff",
-        cellBackground: "#fff",
-        padding: 8,
-        fontFamily: "Arial",
-        fontSize: 16,
-        fontWeight: 400,
-        textColor: "#111",
-        lineHeight: 1.35,
-        letterSpacing: 0,
-        textAlign: "left",
-        verticalAlign: "middle",
-      },
+      style: styleFromPreset(preset),
     });
+    // Fresh tables open their settings once, like a newly added interaction.
+    // Re-selecting the table later never reopens them; only the top toolbar does.
+    const inserted = useEditorStore
+      .getState()
+      .slides[activeSlide]?.elements.at(-1);
+    if (inserted) useEditorStore.getState().setActiveElementId(inserted.id);
+    const ui = useEditorUIStore.getState();
+    if (ui.activePanelType === "main")
+      ui.setLastMainPanel(useEditorStore.getState().activeRightPanel);
+    useEditorStore.getState().setActiveRightPanel("TableSettings");
+    ui.setActivePanelType("edit");
+    ui.setSidebarWidth("edit");
   };
+
   return (
-    <div className="h-full p-3">
-      <div className="mb-4 flex items-center gap-2">
-        <button type="button" onClick={() => back(null)}>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 px-3 pt-3">
+        <button
+          type="button"
+          onClick={() => back(null)}
+          className="rounded-md p-1 text-slate-600 transition hover:bg-slate-100"
+          aria-label="Back to elements"
+        >
           <ArrowLeft size={18} />
         </button>
         <div>
@@ -58,20 +134,40 @@ export default function TableData() {
           <p className="text-[11px] text-slate-500">Elements / Table Library</p>
         </div>
       </div>
-      <div className="grid gap-3">
-        {tablePresets.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={insert}
-            className="rounded-xl border p-4 text-left hover:border-violet-400"
-          >
-            <Table2 className="mb-3 text-violet-600" />
-            <span className="block text-sm font-semibold">{preset.title}</span>
-            <span className="text-xs text-slate-500">
-              {preset.rows} × {preset.columns} editable table
-            </span>
-          </button>
+
+      <div className="flex-1 overflow-y-auto px-3 pb-6 pt-3">
+        <SizePicker
+          rows={size.rows}
+          columns={size.columns}
+          onPick={(rows, columns) => setSize({ rows, columns })}
+        />
+
+        {tableLayouts.map((layout) => (
+          <section key={layout.id} className="mt-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {layout.label}
+            </h3>
+            <p className="mb-2 text-[11px] text-slate-400">{layout.caption}</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {tablePresets
+                .filter((preset) => preset.layout === layout.id)
+                .map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    title={`${preset.label} — insert ${size.rows} × ${size.columns}`}
+                    onClick={() => insert(preset)}
+                    className="rounded-lg border border-slate-200 bg-white p-2 transition hover:-translate-y-0.5 hover:border-violet-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  >
+                    <TableThumb
+                      style={styleFromPreset(preset)}
+                      rows={Math.min(4, Math.max(2, size.rows))}
+                      columns={Math.min(3, Math.max(2, size.columns))}
+                    />
+                  </button>
+                ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>

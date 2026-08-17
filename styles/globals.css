@@ -1603,6 +1603,13 @@ textarea.kd-border-primary:focus {
 /* KD FLOATING TEXT TOOLBAR         */
 /* ================================ */
 
+/* An empty table cell reserves one line box, exactly what the browser gives it
+   the moment it becomes editable. Without this the clicked cell suddenly grows
+   and steals height from the other rows. */
+.kd-table-cell:empty::before {
+  content: "\200b";
+}
+
 .kd-text-toolbar {
   border-radius: 5.69px;
   background: #FFFFFF;
@@ -2541,6 +2548,14 @@ textarea.kd-border-primary:focus {
   color: transparent;
   /* font-family: "Quicksand"; */
   font-style: Bold;
+}
+
+.kd-ask-ai-hero-hint {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 16px;
+  color: #616161;
 }
 
 .kd-ask-ai-pill {

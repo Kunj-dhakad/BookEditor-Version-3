@@ -1,55 +1,31 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    rules: {
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
-      },
-    },
-  },
-  webpack(config) {
-    const svgRule = config.module.rules.find((rule: { test?: RegExp }) =>
-      rule.test?.test?.(".svg"),
-    );
-
-    if (svgRule) {
-      svgRule.exclude = /\.svg$/i;
-    }
-
-    config.module.rules.push({
-      test: /\.svg$/i,
-      issuer: /\.[jt]sx?$/,
-      use: [
-        {
-          loader: "@svgr/webpack",
-          options: {
-            icon: true,
-            svgo: true,
-            svgoConfig: {
-              plugins: [{ name: "removeViewBox", active: false }],
-            },
-          },
-        },
-      ],
-    });
-
-    return config;
-  },
-  images: {
-    domains: ["images.pexels.com",
-      "cdn.prezentaai.com",
-      "images.unsplash.com",
-      "cdn.kidsemapireai.com",
-      "cdn.prezentiq.com",
-      "cdn.demostackai.com",
-      "cdn.clawbooksai.com",
-    "cdn.publishclawai.com"
+  experimental: {
+    // lucide-react and react-icons are already in Next's default list; these
+    // are not, and they're imported across many components.
+    optimizePackageImports: [
+      "@fortawesome/free-solid-svg-icons",
+      "@fortawesome/react-fontawesome",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/modifiers",
     ],
   },
 
-
+  images: {
+    // `domains` has been deprecated since Next 13.
+    remotePatterns: [
+      { protocol: "https", hostname: "images.pexels.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "cdn.prezentaai.com" },
+      { protocol: "https", hostname: "cdn.kidsemapireai.com" },
+      { protocol: "https", hostname: "cdn.prezentiq.com" },
+      { protocol: "https", hostname: "cdn.demostackai.com" },
+      { protocol: "https", hostname: "cdn.clawbooksai.com" },
+      { protocol: "https", hostname: "cdn.publishclawai.com" },
+    ],
+  },
 
   async headers() {
     return [
@@ -72,22 +48,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
-
-
-
-  env: {
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    KD_AWS_REGION: process.env.KD_AWS_REGION,
-    KD_AWS_S3_BUCKET_NAME: process.env.KD_AWS_S3_BUCKET_NAME,
-    KD_AWS_ACCESS_KEY_ID: process.env.KD_AWS_ACCESS_KEY_ID,
-    KD_AWS_SECRET_ACCESS_KEY: process.env.KD_AWS_SECRET_ACCESS_KEY,
-    MYSQL_HOST: process.env.MYSQL_HOST,
-    MYSQL_USER: process.env.MYSQL_USER,
-    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD,
-    MYSQL_DATABASE: process.env.MYSQL_DATABASE,
-    MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
-
   },
 };
 

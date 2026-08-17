@@ -110,10 +110,6 @@ function RenderChart({ id, data, slideIndex, clipBounds }: Props) {
   const select = useCallback(() => {
     setActiveSlide(slideIndex);
     setActiveElementId(id);
-    useEditorStore.getState().setActiveRightPanel("ChartSettings");
-    const ui = useEditorUIStore.getState();
-    ui.setActivePanelType("edit");
-    ui.setSidebarWidth("edit");
   }, [id, setActiveElementId, setActiveSlide, slideIndex]);
   if (data.type !== "chart" || chart.hidden) return null;
   return (
@@ -137,11 +133,13 @@ function RenderChart({ id, data, slideIndex, clipBounds }: Props) {
       >
         <ChartRenderer data={chart} />
       </CanvasDragDrop>
-      <ElementContextMenu
-        position={isSelected ? contextMenuPos : null}
-        elementId={id}
-        onClose={closeContextMenu}
-      />
+      {isSelected && contextMenuPos && (
+        <ElementContextMenu
+          position={contextMenuPos}
+          elementId={id}
+          onClose={closeContextMenu}
+        />
+      )}
     </>
   );
 }

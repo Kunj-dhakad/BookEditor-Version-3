@@ -41,6 +41,15 @@ type EditorUIStore = {
   setActiveElementsCategory: (v: string | null) => void;
 
 
+  /** Which table cells are selected, for merge/split. Lives in UI state so the
+   *  top toolbar can read it; deliberately outside undo history. */
+  tableCellSelection: {
+    elementId: string;
+    anchor: { row: number; column: number };
+    focus: { row: number; column: number };
+  } | null;
+  setTableCellSelection: (v: EditorUIStore["tableCellSelection"]) => void;
+
   cropElementId: string | null;
   setCropElementId: (id: string | null) => void;
 
@@ -100,6 +109,9 @@ const useEditorUIStore = create<EditorUIStore>((set, get) => ({
 
   activeElementsCategory: null,
   setActiveElementsCategory: (v) => set({ activeElementsCategory: v }),
+
+  tableCellSelection: null,
+  setTableCellSelection: (v) => set({ tableCellSelection: v }),
 
   // body:
   cropElementId: null,

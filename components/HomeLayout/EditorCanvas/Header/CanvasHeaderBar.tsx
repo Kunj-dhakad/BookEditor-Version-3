@@ -21,6 +21,14 @@ const CanvasHeaderBar: React.FC = () => {
               useEditorUIStore.getState().setLastMainPanel(currentActive);
             }
             setActiveRightPanel("AskAiPanel");
+            // Opened from the header (not from an on-canvas element), so the
+            // panel should reserve its own space and push the canvas over —
+            // same as the left Navbar panels — instead of floating on top of
+            // it. Without this, editOpenedFromHidden stayed true (its default),
+            // the panel rendered as an absolute overlay that reserves no flex
+            // width, and the canvas centered across the whole editor area
+            // instead of the space actually left free next to the panel.
+            useEditorUIStore.getState().setSiteBarCollapsed(false);
             useEditorUIStore.getState().setActivePanelType("edit");
             if (useEditorUIStore.getState().sidebarWidth === "closed") {
               useEditorUIStore.getState().setSidebarWidth("edit");
@@ -43,6 +51,7 @@ const CanvasHeaderBar: React.FC = () => {
               useEditorUIStore.getState().setLastMainPanel(currentActive);
             }
             setActiveRightPanel("CanvasBgBar");
+            useEditorUIStore.getState().setSiteBarCollapsed(false);
             useEditorUIStore.getState().setActivePanelType("edit");
             if (useEditorUIStore.getState().sidebarWidth === "closed") {
               useEditorUIStore.getState().setSidebarWidth("edit");

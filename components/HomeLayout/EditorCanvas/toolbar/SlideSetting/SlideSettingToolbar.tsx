@@ -6,13 +6,13 @@ import { KdBannerAddSlideIcon, KdBannerDeleteIcon, KdBannerDownIcon, KdBannerDup
 export default function SlideSettingToolbar({ slideIndex }: { slideIndex: number }) {
     const addSlide = useEditorStore((s) => s.addSlide);
     const deleteSlide = useEditorStore((s) => s.deleteSlide);
-    const slides = useEditorStore((s) => s.slides);
     const duplicateSlide = useEditorStore((s) => s.duplicateSlide);
     const reorderSlides = useEditorStore((s) => s.reorderSlides);
     const setActiveSlide = useEditorStore((s) => s.setActiveSlide);
-    const totalSlides = slides.length;
-
-    const thisSlideId = slides[slideIndex]?.id;
+    // One of these renders per slide, so subscribing to the whole `slides`
+    // array re-rendered every slide's toolbar on every store write.
+    const totalSlides = useEditorStore((s) => s.slides.length);
+    const thisSlideId = useEditorStore((s) => s.slides[slideIndex]?.id);
   const [showTooltip, setShowTooltip] = React.useState<string | null>(null);
 
     const scrollToSlide = (targetIdx: number) => {

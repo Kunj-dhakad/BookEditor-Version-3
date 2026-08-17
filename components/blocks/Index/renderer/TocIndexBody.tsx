@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { forwardRef, useImperativeHandle, useState } from "react";
 import type { TextData } from "@/app/Store/editorStore";
 import type { ChapterEntry } from "@/components/blocks/Index/lib/ChapterManager";
 import type { BookIndexPage } from "@/components/blocks/Index/lib/BookIndexPaginator";
@@ -13,9 +13,19 @@ type Props = {
   onEntryClick: (startPage: number) => void;
   editable?: boolean;
   onRenameChapter?: (elementId: string, text: string) => void;
+  /** Editor only: reports which entry a press landed on, and whether it hit the
+   *  chapter title. The canvas wrapper captures the pointer, so click and
+   *  dblclick never reach these rows — the parent replays them from pointer-up. */
+  onEntryPress?: (press: { chapter: ChapterEntry; onTitle: boolean }) => void;
 };
 
-export default function TocIndexBody({
+/** Lets the canvas wrapper start a rename for a press it handled itself. */
+export type TocIndexBodyHandle = {
+  editChapter: (elementId: string) => void;
+  commitActiveEdit: () => void;
+};
+
+const TocIndexBody = forwardRef<TocIndexBodyHandle, Props>(function TocIndexBody({
   data,
   page,
   pageNumber,
@@ -23,7 +33,8 @@ export default function TocIndexBody({
   onEntryClick,
   editable,
   onRenameChapter,
-}: Props) {
+  onEntryPress,
+}: Props, ref) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -45,6 +56,21 @@ export default function TocIndexBody({
     if (trimmed && trimmed !== chapter.title) onRenameChapter?.(chapter.elementId, trimmed);
     setEditingId(null);
   };
+
+  useImperativeHandle(ref, () => ({
+    editChapter: (elementId: string) => {
+      const chapter = page.entries.find((entry) => entry.elementId === elementId);
+      if (chapter) startEdit(chapter);
+    },
+    // The canvas wrapper swallows the press that would normally blur the input,
+    // so a click on empty space inside the index has to close it explicitly.
+    commitActiveEdit: () => {
+      if (!editingId) return;
+      const chapter = page.entries.find((entry) => entry.elementId === editingId);
+      if (chapter) commitEdit(chapter);
+      else setEditingId(null);
+    },
+  }));
 
   const pageLabel = (chapter: ChapterEntry) =>
     data.tocShowRanges ? `${chapter.startPage}–${chapter.endPage}` : chapter.startPage;
@@ -81,6 +107,7 @@ export default function TocIndexBody({
     }
     return (
       <span
+        data-toc-title="true"
         onDoubleClick={(e) => {
           e.stopPropagation();
           startEdit(chapter);
@@ -103,6 +130,14 @@ export default function TocIndexBody({
   const entryProps = (chapter: ChapterEntry) => ({
     role: "button" as const,
     tabIndex: 0,
+    onPointerDown: (event: React.PointerEvent) => {
+      if (editingId) return;
+      const target = event.target as HTMLElement | null;
+      onEntryPress?.({
+        chapter,
+        onTitle: Boolean(target?.closest?.("[data-toc-title]")),
+      });
+    },
     onClick: (event: React.MouseEvent) => {
       event.stopPropagation();
       if (editingId) return;
@@ -306,4 +341,6 @@ export default function TocIndexBody({
       {entriesNode}
     </>
   );
-}
+});
+
+export default TocIndexBody;

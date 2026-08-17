@@ -54,6 +54,9 @@ export const CanvasDragDrop: React.FC<Props> = memo(({
   const [controlsPos, setControlsPos] = useState<{ left: number; top: number } | null>(null);
   const [rotationBadge, setRotationBadge] = useState<{ left: number; top: number; value: number } | null>(null);
   const movedRef = useRef(false);
+  // Where a read-only (preview/export) press started, so pointer-up can tell a
+  // click apart from a scroll/flip gesture that merely passed over the element.
+  const readOnlyPressRef = useRef<{ x: number; y: number } | null>(null);
   const lastHandleRef = useRef<Handle | "drag" | null>(null);
   const previousCursorRef = useRef("");
   const zoom = useEditorUIStore((s) => s.MainCanvasScale);
@@ -134,6 +137,19 @@ export const CanvasDragDrop: React.FC<Props> = memo(({
   const onPointerDown = useCallback((e: React.PointerEvent, handle: Handle | "drag") => {
     e.stopPropagation();
     if (dragDisabled && handle === "drag") return;
+
+    // Preview and export are read-only views of the canvas. A press there may
+    // still turn into a click — links, buttons and interactions have to keep
+    // working — but it must never move, resize, rotate or select the element.
+    // (TextDragAndDrop already did this; without the same guard here every
+    // non-text element stayed draggable inside the preview.)
+    if (imageExportMode) {
+      if (handle === "drag") {
+        readOnlyPressRef.current = { x: e.clientX, y: e.clientY };
+      }
+      return;
+    }
+
     e.preventDefault();
     if (e.button === 0 && applyCopiedStyleIfActive(id)) return;
     if (handle === "drag" && (e.ctrlKey || e.metaKey || e.shiftKey)) {
@@ -166,7 +182,7 @@ export const CanvasDragDrop: React.FC<Props> = memo(({
     movedRef.current = false;
 
     setIsDragging(true);
-  }, [dragDisabled, getPointerAngle, id, isSelected, onSelect, rect, setChromeVisible, setGlobalCursor]);
+  }, [dragDisabled, getPointerAngle, id, imageExportMode, isSelected, onSelect, rect, setChromeVisible, setGlobalCursor]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     const ds = dragState.current;
@@ -232,7 +248,20 @@ export const CanvasDragDrop: React.FC<Props> = memo(({
 
   }, [applyRectToDOM, formatRotation, getPointerAngle, setChromeVisible, zoom]);
 
-  const onPointerUp = useCallback(() => {
+  const onPointerUp = useCallback((e?: React.PointerEvent) => {
+    const readOnlyPress = readOnlyPressRef.current;
+    if (readOnlyPress) {
+      readOnlyPressRef.current = null;
+      // Only a press that stayed put is a click; dragging across the element to
+      // scroll or flip the page must not activate it.
+      const strayed =
+        !!e &&
+        (Math.abs(e.clientX - readOnlyPress.x) > 4 ||
+          Math.abs(e.clientY - readOnlyPress.y) > 4);
+      if (!strayed) onElementClick?.();
+      return;
+    }
+
     const ds = dragState.current;
     if (!ds) return;
     const handle = lastHandleRef.current;

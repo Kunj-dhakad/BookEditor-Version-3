@@ -1,4 +1,5 @@
 import React, { useCallback, memo } from "react";
+import dynamic from "next/dynamic";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, {
   ElementData,
@@ -8,7 +9,11 @@ import Image from "next/image";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { styleClipboard } from "@/lib/styleClipboard";
 import { CanvasDragDrop } from "@/components/HomeLayout/EditorCanvas/RenderElement/CanvasDragDrop";
-import ImageCropOverlay from "@/components/blocks/Image/editor/ImageCropOverlay";
+
+const ImageCropOverlay = dynamic(
+  () => import("@/components/blocks/Image/editor/ImageCropOverlay"),
+  { ssr: false, loading: () => null },
+);
 import { PageClipBounds } from "@/components/HomeLayout/EditorCanvas/RenderElement/pageClip";
 import ElementContextMenu from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/ElementContextMenu";
 import { useElementContextMenu } from "@/components/HomeLayout/EditorCanvas/RenderElement/useElementContextMenu";
@@ -39,12 +44,9 @@ const RenderImage: React.FC<{
     );
 
     const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
-    // const [targetEl, setTargetEl] = useState<HTMLDivElement | null>(null);
     const cropElementId = useEditorUIStore((s) => s.cropElementId);
-
     const bgRemovingElementId = useEditorUIStore((s) => s.bgRemovingElementId);
     const isBgRemoving = bgRemovingElementId === id;
-
     const { contextMenuPos, handleContextMenu, closeContextMenu } =
       useElementContextMenu(id, slideIndex);
 
@@ -84,7 +86,6 @@ const RenderImage: React.FC<{
           isSelected={isSelected}
           imageExportMode={imageExportMode}
           clipBounds={clipBounds}
-          // onContainerChange={setTargetEl}
           onContextMenu={handleContextMenu}
           onSelect={(e) => {
             const isCopyStyleMode = useEditorUIStore.getState().isCopyStyleMode;
@@ -220,11 +221,13 @@ const RenderImage: React.FC<{
             )}
           </div>
         </CanvasDragDrop>
-        <ElementContextMenu
-          position={isSelected ? contextMenuPos : null}
-          elementId={id}
-          onClose={closeContextMenu}
-        />
+        {isSelected && contextMenuPos && (
+          <ElementContextMenu
+            position={contextMenuPos}
+            elementId={id}
+            onClose={closeContextMenu}
+          />
+        )}
       </>
     );
   },

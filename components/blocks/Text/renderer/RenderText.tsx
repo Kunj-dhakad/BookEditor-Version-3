@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState, memo, useCallback } from "react";
+import React, { useEffect, useRef, useState, memo, useCallback, useMemo } from "react";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { TextData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
@@ -100,6 +100,58 @@ function getContext(): CanvasRenderingContext2D | null {
   return _mx;
 }
 
+/**
+ * Counts wrapped lines with the exact same break points as the previous
+ * character-by-character greedy loop — including the rule that an overflowing
+ * space is dropped rather than carried to the next line — but with
+ * O(lines * log(lineLength)) measureText calls instead of O(chars). The old
+ * version re-measured the whole growing line on every character, which is
+ * quadratic on long paragraphs, and this runs on every keystroke and every
+ * text-resize pointermove.
+ *
+ * Relies on width being non-decreasing as characters are appended within a
+ * line, which holds for ordinary text.
+ */
+function countWrappedLines(
+  ctx: CanvasRenderingContext2D,
+  chars: string[],
+  maxW: number,
+): number {
+  const n = chars.length;
+  let pos = 0;
+  let breaks = 0;
+  while (pos < n) {
+    // The first character of a line is always kept, even if it alone
+    // overflows — matches the original's unconditional append when the
+    // in-progress line was still empty.
+    let lo = 1;
+    let hi = n - pos;
+    let best = 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const width = ctx.measureText(chars.slice(pos, pos + mid).join("")).width;
+      if (width <= maxW) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    const overflowIdx = pos + best;
+    if (overflowIdx >= n) {
+      pos = n;
+    } else {
+      // The original always counts one more line for the trailing segment
+      // after a break — even an empty one, which happens when the overflowing
+      // character is whitespace at the very end and gets dropped.
+      breaks++;
+      const overflowChar = chars[overflowIdx];
+      pos = overflowChar.trim() ? overflowIdx : overflowIdx + 1;
+    }
+  }
+  return breaks + 1;
+}
+
 function measureTextHeight(
   text: string | undefined,
   fontSize: number,
@@ -125,17 +177,7 @@ function measureTextHeight(
       totalLines++;
       continue;
     }
-    let line = "";
-    for (const char of Array.from(para)) {
-      const test = line + char;
-      if (ctx.measureText(test).width > maxW && line) {
-        totalLines++;
-        line = char.trim() ? char : "";
-      } else {
-        line = test;
-      }
-    }
-    totalLines++;
+    totalLines += countWrappedLines(ctx, Array.from(para), maxW);
   }
   return Math.max(1, totalLines) * fontSize * lh + PAD_Y * 2;
 }
@@ -169,8 +211,14 @@ const RenderText: React.FC<{
   data: TextData;
   slideIndex: number;
   clipBounds?: PageClipBounds;
+  /**
+   * Renders without ever writing to the document. The reader mounts this same
+   * component; without it, the auto-fit measurement below would push its own
+   * measurements back into the user's slides.
+   */
+  readOnly?: boolean;
 }> = memo(
-  ({ id, data, slideIndex, clipBounds }) => {
+  ({ id, data, slideIndex, clipBounds, readOnly = false }) => {
     const editingRef = useRef<HTMLDivElement | null>(null);
     const [fontReady, setFontReady] = useState(!data.fontFamily);
     const isEditingRef = useRef(false);
@@ -219,7 +267,7 @@ const RenderText: React.FC<{
     }, [data.fontSize, isResizing]);
 
     const {
-      updateElement,
+      updateElement: storeUpdateElement,
       setActiveElementId,
       setActiveSlide,
       toggleSelectedElementId,
@@ -230,6 +278,13 @@ const RenderText: React.FC<{
         setActiveSlide: s.setActiveSlide,
         toggleSelectedElementId: s.toggleSelectedElementId,
       })),
+    );
+
+    // One gate for every write in this component, so a read-only mount (the
+    // preview reader) cannot mutate slides while it measures itself.
+    const updateElement = useMemo<typeof storeUpdateElement>(
+      () => (readOnly ? () => { } : storeUpdateElement),
+      [readOnly, storeUpdateElement],
     );
 
     const isSelected = useEditorStore(
@@ -746,7 +801,11 @@ const RenderText: React.FC<{
             suppressContentEditableWarning
             data-element-id={id}
             onBlur={handleBlur}
-            onInput={syncHeightToText}
+            // No onInput height sync: this box is `height: auto`, so the
+            // ResizeObserver below already fires (rAF-debounced, same epsilon
+            // guard, same lastHeightRef) whenever typing changes the rendered
+            // height. Running both meant two full measurements per keystroke.
+            // Paste still calls it explicitly since it mutates the DOM directly.
             onPaste={handlePaste}
             onContextMenu={handleContextMenu}
             onClick={(e) => {
@@ -789,16 +848,19 @@ const RenderText: React.FC<{
           />
         </TextDragAndDrop>
 
-        <ElementContextMenu
-          position={isSelected ? contextMenuPos : null}
-          elementId={id}
-          onClose={() => setContextMenuPos(null)}
-        />
+        {isSelected && contextMenuPos && (
+          <ElementContextMenu
+            position={contextMenuPos}
+            elementId={id}
+            onClose={() => setContextMenuPos(null)}
+          />
+        )}
       </>
     );
   },
   (p, n) =>
     p.id === n.id &&
+    p.readOnly === n.readOnly &&
     p.slideIndex === n.slideIndex &&
     p.clipBounds?.width === n.clipBounds?.width &&
     p.clipBounds?.height === n.clipBounds?.height &&

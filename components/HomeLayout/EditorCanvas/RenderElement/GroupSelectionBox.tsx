@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementType } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import FloatingToolBar from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/FloatingToolBar";
@@ -112,8 +113,11 @@ const getGroupBounds = (elements: ElementType[]): Bounds | null => {
 };
 
 const GroupSelectionBox: React.FC<{ slideIndex: number }> = memo(({ slideIndex }) => {
-  const selectedIds = useEditorStore((s) => s.selectedElementIds);
-  const slide = useEditorStore((s) => s.slides[slideIndex]);
+  // Rendered once per slide. `selectedElementIds` is re-created on every
+  // selection change and the whole slide object changes on every element edit,
+  // so both needed narrowing to stop N re-renders per store write.
+  const selectedIds = useEditorStore(useShallow((s) => s.selectedElementIds));
+  const slideElements = useEditorStore((s) => s.slides[slideIndex]?.elements);
   const updateElement = useEditorStore((s) => s.updateElement);
   const pushToHistory = useEditorStore((s) => s.pushToHistory);
   const imageExportMode = useEditorUIStore((s) => s.imageExportMode);
@@ -143,10 +147,10 @@ const GroupSelectionBox: React.FC<{ slideIndex: number }> = memo(({ slideIndex }
   } | null>(null);
 
   const selectedElements = useMemo(() => {
-    if (!slide || selectedIds.length < 2) return [];
+    if (!slideElements || selectedIds.length < 2) return [];
     const selected = new Set(selectedIds);
-    return slide.elements.filter((el) => selected.has(el.id));
-  }, [selectedIds, slide]);
+    return slideElements.filter((el) => selected.has(el.id));
+  }, [selectedIds, slideElements]);
 
   const bounds = useMemo(() => getGroupBounds(selectedElements), [selectedElements]);
   const currentBounds = dragBounds ?? bounds;

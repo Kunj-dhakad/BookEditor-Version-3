@@ -62,6 +62,18 @@ export default function Charts() {
       ],
       style,
     });
+    // Fresh charts open their settings once, like a newly added interaction.
+    // Re-selecting the chart later never reopens them; only the top toolbar does.
+    const inserted = useEditorStore
+      .getState()
+      .slides[activeSlide]?.elements.at(-1);
+    if (inserted) useEditorStore.getState().setActiveElementId(inserted.id);
+    const ui = useEditorUIStore.getState();
+    if (ui.activePanelType === "main")
+      ui.setLastMainPanel(useEditorStore.getState().activeRightPanel);
+    useEditorStore.getState().setActiveRightPanel("ChartSettings");
+    ui.setActivePanelType("edit");
+    ui.setSidebarWidth("edit");
   };
   return (
     <div className="h-full p-3">

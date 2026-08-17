@@ -7,19 +7,25 @@ import useProjectInfoStore from "../../../app/Store/projectInfoStore";
 import Image from 'next/image'
 // import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import { MdOutlineDownloadDone } from "react-icons/md";
-import { useRouter } from "next/navigation";
+import PreviewPopup from "./EditorPreview/PreviewPopup";
 
 const Header: React.FC = () => {
-  const router = useRouter();
   // const { setImageExportMode } = useEditorUIStore.getState();
   const [open, setOpen] = useState(false);
+  // Preview now opens in a dialog over the editor instead of navigating away,
+  // so editor state stays alive and nothing is reloaded. The /preview route
+  // still exists and works unchanged for anyone opening it directly.
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const titleRef = useRef<HTMLSpanElement>(null);
 
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
-  const slides = useEditorStore((s) => s.slides);
+  // `slides` is only needed inside the publish/autosave callbacks, never during
+  // render. Subscribing to it here re-rendered the whole header on every edit
+  // AND re-created the 60s autosave interval each time, so autosave effectively
+  // never fired while the user was actively editing. Read it at call time.
 
   const id = useProjectInfoStore((s) => s.id);
   const token = useProjectInfoStore((s) => s.token);
@@ -115,7 +121,7 @@ const Header: React.FC = () => {
       // setImageExportMode(false);
       // const thumbnailBlob = await fetch(thumbnailBase64).then((r) => r.blob());
       const slidesForUpload = {
-        slides: slides.map((sl) => ({
+        slides: useEditorStore.getState().slides.map((sl) => ({
           id: sl.id,
           height: sl.height,
           width: sl.width,
@@ -178,7 +184,7 @@ const Header: React.FC = () => {
   const autoSave = useCallback(async () => {
     try {
       const slidesForUpload = {
-        slides: slides.map((sl) => ({
+        slides: useEditorStore.getState().slides.map((sl) => ({
           id: sl.id,
           height: sl.height,
           width: sl.width,
@@ -209,7 +215,7 @@ const Header: React.FC = () => {
     } catch (error) {
       console.error("Auto save failed:", error);
     }
-  }, [slides, id, token, api_url]);
+  }, [id, token, api_url]);
 
   useEffect(() => {
     const interval = setInterval(autoSave, 60000);
@@ -297,7 +303,7 @@ const Header: React.FC = () => {
       <div className="flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() => router.push("/preview")}
+          onClick={() => setPreviewOpen(true)}
           className="kd-header-action-btn kd-header-btn kd-font-jakarta"
         >
           Preview
@@ -341,6 +347,7 @@ const Header: React.FC = () => {
           {/* )} */}
 
         <ShareModal open={open} setOpen={setOpen} />
+        {previewOpen && <PreviewPopup onClose={() => setPreviewOpen(false)} />}
         <button
           onClick={handlePublish}
           className="kd-header-action-btn kd-header-btn kd-font-jakarta"

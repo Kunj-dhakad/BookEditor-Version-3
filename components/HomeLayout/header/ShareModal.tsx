@@ -3,7 +3,8 @@ import Image from 'next/image'
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import useEditorStore from "@/app/Store/editorStore";
-import { generateSlidesZip } from "@/lib/outputGenerateLibrary";
+// generateSlidesZip is imported lazily in handleZip — a static import puts
+// jszip, file-saver and html-to-image in the initial bundle for a rare click.
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch, faDownload } from '@fortawesome/free-solid-svg-icons'
 import clsx from "clsx";
@@ -96,6 +97,9 @@ export default function ShareModal({ open, setOpen }: ShareModalProps) {
   const handleZip = async () => {
     try {
       startLoading("pngs");
+      const { generateSlidesZip } = await import(
+        "@/lib/outputGenerateLibrary/generateZip"
+      );
       await generateSlidesZip();
     } finally {
       stopLoading("pngs");

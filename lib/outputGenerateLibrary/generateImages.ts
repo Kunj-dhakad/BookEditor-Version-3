@@ -22,7 +22,20 @@ function patchBrokenImages(node: HTMLElement) {
   };
 }
 
+// Slides outside the active window aren't mounted (see the virtualization in
+// main.tsx). The caller flips imageExportMode to force them all to mount, but
+// that mount + commit + paint happens asynchronously in React, so wait two
+// animation frames — the standard way to be sure the DOM reflects the state
+// change — before reading anything off the slide refs.
+function waitForPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export async function generateImages() {
+  await waitForPaint();
+
   const refs = getSlideRefs();
   const images: { index: number; dataUrl: string }[] = [];
 

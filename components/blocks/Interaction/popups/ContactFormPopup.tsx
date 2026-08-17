@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { InteractionData } from "@/app/Store/editorStore";
 import InteractionPopupShell from "./InteractionPopupShell";
+import { submitInteractionResponse, type SubmitState } from "./submitResponse";
 
 interface ContactFormPopupProps {
   data: InteractionData;
@@ -19,9 +20,25 @@ const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, onClose }) =>
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [state, setState] = useState<SubmitState>("idle");
+
+  const send = async () => {
+    setState("sending");
+    const answers: Record<string, unknown> = {};
+    fields.forEach((field) => { answers[field.label || field.id] = values[field.id] ?? ""; });
+    answers.privacyAccepted = agreePrivacy;
+    if (data.showMarketingOptIn) answers.marketingOptIn = agreeMarketing;
+    const result = await submitInteractionResponse(data.submitUrl, {
+      kind: "contact-form",
+      title: data.contactFormTitle,
+      answers,
+    });
+    setState(result);
+    if (result !== "failed") setSubmitted(true);
+  };
 
   const requiredMissing = fields.some((f) => f.required && !values[f.id]?.trim());
-  const canSubmit = !requiredMissing && agreePrivacy;
+  const canSubmit = !requiredMissing && agreePrivacy && state !== "sending";
 
   if (submitted) {
     return (
@@ -108,7 +125,7 @@ const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, onClose }) =>
       <button
         type="button"
         disabled={!canSubmit}
-        onClick={() => setSubmitted(true)}
+        onClick={send}
         style={{
           width: "100%",
           marginTop: 14,
@@ -122,8 +139,13 @@ const ContactFormPopup: React.FC<ContactFormPopupProps> = ({ data, onClose }) =>
           cursor: canSubmit ? "pointer" : "not-allowed",
         }}
       >
-        Submit
+        {state === "sending" ? "Sending…" : "Submit"}
       </button>
+      {state === "failed" && (
+        <p style={{ marginTop: 8, fontSize: 11.5, color: "#dc2626" }}>
+          Could not send your response. Please try again.
+        </p>
+      )}
     </InteractionPopupShell>
   );
 };

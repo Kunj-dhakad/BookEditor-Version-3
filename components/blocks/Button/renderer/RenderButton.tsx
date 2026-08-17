@@ -227,11 +227,13 @@ const RenderButton: React.FC<{
         </div>
       </div>
     </CanvasDragDrop>
-    <ElementContextMenu
-      position={isSelected ? contextMenuPos : null}
-      elementId={id}
-      onClose={closeContextMenu}
-    />
+    {isSelected && contextMenuPos && (
+      <ElementContextMenu
+        position={contextMenuPos}
+        elementId={id}
+        onClose={closeContextMenu}
+      />
+    )}
     </>
   );
 }, (p, n) => {

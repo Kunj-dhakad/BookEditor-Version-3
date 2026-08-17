@@ -2,9 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useEditorStore from "@/app/Store/editorStore";
 import { loadGoogleFont } from "@/lib/FontFamily/useFontLoader";
-
-type FontItem = { family: string; category?: string };
-
+import { CURATED_FONTS, type FontItem } from "@/lib/FontFamily/fonts";
 
 async function fetchGoogleFonts(): Promise<FontItem[]> {
   try {
@@ -26,35 +24,7 @@ async function fetchGoogleFonts(): Promise<FontItem[]> {
     return CURATED_FONTS;
   }
 }
-const CURATED_FONTS: FontItem[] = [
-  { family: "Inter" }, { family: "Roboto" }, { family: "Open Sans" },
-  { family: "Montserrat" }, { family: "Lato" }, { family: "Poppins" },
-  { family: "Raleway" }, { family: "Oswald" }, { family: "Nunito" },
-  { family: "Playfair Display" }, { family: "Merriweather" }, { family: "PT Sans" },
-  { family: "Source Sans 3" }, { family: "Ubuntu" }, { family: "Noto Sans" },
-  { family: "Josefin Sans" }, { family: "Mulish" }, { family: "Quicksand" },
-  { family: "DM Sans" }, { family: "Karla" }, { family: "Cabin" },
-  { family: "Barlow" }, { family: "Jost" }, { family: "Outfit" },
-  { family: "Be Vietnam Pro" }, { family: "Plus Jakarta Sans" }, { family: "Figtree" },
-  { family: "Manrope" }, { family: "Sora" }, { family: "Space Grotesk" },
-  { family: "Work Sans" }, { family: "Libre Franklin" }, { family: "Rubik" },
-  { family: "IBM Plex Sans" }, { family: "Fira Sans" }, { family: "Noto Serif" },
-  { family: "EB Garamond" }, { family: "Lora" }, { family: "Libre Baskerville" },
-  { family: "Crimson Text" }, { family: "Cormorant Garamond" }, { family: "Spectral" },
-  { family: "Roboto Slab" }, { family: "Zilla Slab" }, { family: "Bitter" },
-  { family: "Cardo" }, { family: "Arvo" }, { family: "Gelasio" },
-  { family: "Roboto Mono" }, { family: "Fira Code" }, { family: "JetBrains Mono" },
-  { family: "Source Code Pro" }, { family: "IBM Plex Mono" }, { family: "Space Mono" },
-  { family: "Courier Prime" }, { family: "Inconsolata" }, { family: "Pacifico" },
-  { family: "Dancing Script" }, { family: "Lobster" }, { family: "Caveat" },
-  { family: "Satisfy" }, { family: "Sacramento" }, { family: "Great Vibes" },
-  { family: "Kaushan Script" }, { family: "Yellowtail" }, { family: "Parisienne" },
-  { family: "Bebas Neue" }, { family: "Anton" }, { family: "Black Han Sans" },
-  { family: "Permanent Marker" }, { family: "Titan One" }, { family: "Righteous" },
-  { family: "Lilita One" }, { family: "Boogaloo" }, { family: "Fredoka One" },
-  { family: "Fugaz One" }, { family: "Bowlby One SC" }, { family: "Press Start 2P" },
-  { family: "Abril Fatface" }, { family: "Ultra" }, { family: "Alfa Slab One" },
-];
+
 
 const FontRow: React.FC<{
   font: FontItem;

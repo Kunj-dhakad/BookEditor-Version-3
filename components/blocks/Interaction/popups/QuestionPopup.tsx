@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { InteractionData } from "@/app/Store/editorStore";
 import InteractionPopupShell from "./InteractionPopupShell";
+import { submitInteractionResponse, type SubmitState } from "./submitResponse";
 
 interface QuestionPopupProps {
   data: InteractionData;
@@ -13,6 +14,20 @@ interface QuestionPopupProps {
 const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, onClose }) => {
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [state, setState] = useState<SubmitState>("idle");
+
+  // Delivered to the author's webhook when one is configured; otherwise this
+  // resolves immediately and the popup just confirms locally, as before.
+  const send = async () => {
+    setState("sending");
+    const result = await submitInteractionResponse(data.submitUrl, {
+      kind: "question",
+      title: data.questionTitle,
+      answers: { [data.questionText || "question"]: answer },
+    });
+    setState(result);
+    if (result !== "failed") setSubmitted(true);
+  };
 
   if (submitted) {
     return (
@@ -60,8 +75,8 @@ const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, onClose }) => {
       />
       <button
         type="button"
-        disabled={!answer.trim()}
-        onClick={() => setSubmitted(true)}
+        disabled={!answer.trim() || state === "sending"}
+        onClick={send}
         style={{
           width: "100%",
           marginTop: 12,
@@ -75,8 +90,13 @@ const QuestionPopup: React.FC<QuestionPopupProps> = ({ data, onClose }) => {
           cursor: answer.trim() ? "pointer" : "not-allowed",
         }}
       >
-        Submit
+        {state === "sending" ? "Sending…" : "Submit"}
       </button>
+      {state === "failed" && (
+        <p style={{ marginTop: 8, fontSize: 11.5, color: "#dc2626" }}>
+          Could not send your answer. Please try again.
+        </p>
+      )}
     </InteractionPopupShell>
   );
 };

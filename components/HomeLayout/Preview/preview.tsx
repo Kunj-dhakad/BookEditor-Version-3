@@ -1,7 +1,7 @@
 "use client";
 import React, {
   // startTransition,
-  // useEffect,
+  useEffect,
   useState,
   useRef,
   useCallback,
@@ -74,6 +74,7 @@ const SlideItem = memo(
       <SortableSlide id={slide.id}>
         <div
           onMouseDown={handleJump}
+          data-thumb-index={index}
           className={`group relative transition-all kd-slide-preview ${isActive ? "kd-slide-preview-active" : ""
             }`}
         >
@@ -131,6 +132,13 @@ const SlideItem = memo(
 
 const ACTIVATION_CONSTRAINT = { distance: 8 };
 
+// Breathing room kept between the active thumbnail and the panel edge.
+const FOLLOW_MARGIN = 8;
+// While the user is driving the thumbnail list themselves (wheel, drag of the
+// scrollbar, clicking a page), auto-follow steps aside for this long so the
+// two never fight over scrollTop.
+const MANUAL_SCROLL_GRACE_MS = 700;
+
 export default function Preview({
   // slides,
   activeSlide,
@@ -160,10 +168,105 @@ export default function Preview({
 
   const slideIds = useMemo(() => slides.map((s) => s.id), [slides]);
 
+  // ── Keep the thumbnail list in sync with the canvas ──────────────────────
+  // The canvas' IntersectionObserver already moves activeSlide as the user
+  // scrolls; the panel just has to follow it. Everything below is refs +
+  // one rAF so a fast canvas scroll (activeSlide changing many times a
+  // second) never queues work or re-renders this list.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const activeSlideRef = useRef(activeSlide);
+  const isDraggingRef = useRef(false);
+  const manualScrollUntilRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasFollowedOnceRef = useRef(false);
+
+  // Named function expression: the retry below re-arms `follow` by name, so
+  // the two halves never have to depend on each other.
+  const followActiveSlide = useCallback(function follow() {
+    const list = listRef.current;
+    // Reordering moves thumbnails under dnd-kit's own transforms — measuring
+    // them mid-drag would scroll to a stale position.
+    if (!list || isDraggingRef.current) return;
+
+    const thumb = list.querySelector<HTMLElement>(
+      `[data-thumb-index="${activeSlideRef.current}"]`
+    );
+    if (!thumb) return;
+
+    const listBox = list.getBoundingClientRect();
+    const thumbBox = thumb.getBoundingClientRect();
+
+    // Scroll by the smallest amount that brings the thumbnail into view — if
+    // it is already visible we do nothing, which is what keeps a fast canvas
+    // scroll from jittering the panel.
+    let delta = 0;
+    if (thumbBox.top < listBox.top + FOLLOW_MARGIN) {
+      delta = thumbBox.top - listBox.top - FOLLOW_MARGIN;
+    } else if (thumbBox.bottom > listBox.bottom - FOLLOW_MARGIN) {
+      delta = thumbBox.bottom - listBox.bottom + FOLLOW_MARGIN;
+    }
+    if (Math.abs(delta) < 1) return;
+
+    // A long hop (page 2 → page 40) animated smoothly just looks like lag,
+    // and so does the very first sync after mount.
+    const jumpIsFar = Math.abs(delta) > list.clientHeight * 1.5;
+    const behavior: ScrollBehavior =
+      jumpIsFar || !hasFollowedOnceRef.current ? "auto" : "smooth";
+    hasFollowedOnceRef.current = true;
+
+    list.scrollTo({ top: list.scrollTop + delta, behavior });
+  }, []);
+
+  const scheduleFollow = useCallback(() => {
+    // Coalesce every request in this frame into a single scroll decision.
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      followActiveSlide();
+    });
+  }, [followActiveSlide]);
+
+  useEffect(() => {
+    activeSlideRef.current = activeSlide;
+    scheduleFollow();
+  }, [activeSlide, scheduleFollow]);
+
+  // A new/removed page shifts every thumbnail below it.
+  useEffect(() => {
+    scheduleFollow();
+  }, [slideIds.length, scheduleFollow]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
+  // Wheel/pointer/touch only — deliberately not the `scroll` event, which our
+  // own scrollTo also fires and would make auto-follow suppress itself.
+  const markManualScroll = useCallback(() => {
+    manualScrollUntilRef.current = Date.now() + MANUAL_SCROLL_GRACE_MS;
+  }, []);
+
+  const handleDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    isDraggingRef.current = false;
+    scheduleFollow();
+  }, [scheduleFollow]);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      isDraggingRef.current = false;
       const { active, over } = event;
-      if (!over) return;
+      if (!over) {
+        scheduleFollow();
+        return;
+      }
       const oldIndex = slideIds.indexOf(String(active.id));
       const newIndex = slideIds.indexOf(String(over.id));
       if (oldIndex !== newIndex) {
@@ -172,7 +275,7 @@ export default function Preview({
         jumpToSlide(newIndex);
       }
     },
-    [slideIds, reorderSlides, setActiveSlide, jumpToSlide]
+    [slideIds, reorderSlides, setActiveSlide, jumpToSlide, scheduleFollow]
   );
 
 
@@ -205,13 +308,19 @@ export default function Preview({
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext
             items={slideIds}
             strategy={verticalListSortingStrategy}
           >
             <div
+              ref={listRef}
+              onWheel={markManualScroll}
+              onPointerDown={markManualScroll}
+              onTouchStart={markManualScroll}
               className="flex flex-col items-center gap-1 overflow-y-auto kd-custom-scrollbar flex-1 min-h-0 w-full"
               style={{
                 overscrollBehaviorY: "contain",

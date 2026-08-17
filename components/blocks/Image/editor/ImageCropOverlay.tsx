@@ -16,10 +16,10 @@ const injectCSS = () => {
 
 if (typeof window !== "undefined") injectCSS();
 
-export const cropperControls = {
-  setRatio:       (_ratio: number) => {},
-  getCroppedBlob: (): Promise<Blob | null> => Promise.resolve(null),
-};
+// The binding lives in its own module so panels that only *drive* the cropper
+// (ImageCropePanel) can reach it without importing react-cropper.
+import { cropperControls } from "./cropperControls";
+export { cropperControls };
 
 const ImageCropOverlay: React.FC = () => {
   const cropElementId    = useEditorUIStore((s) => s.cropElementId);

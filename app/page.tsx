@@ -1,6 +1,7 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import useEditorStore, { TextData } from "@/app/Store/editorStore";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
+import useEditorStore, { ElementType, TextData } from "@/app/Store/editorStore";
 import Header from "@/components/HomeLayout/header/header";
 import MainCanvas from "@/components/HomeLayout/EditorCanvas/main";
 import useProjectInfoStore from "./Store/projectInfoStore";
@@ -8,27 +9,43 @@ import { THEMES } from "@/lib/themes/themes";
 import { applyTheme } from "@/lib/themes/applyTheme";
 import ToolPanel from "@/components/HomeLayout/AssetsPanel/ToolPanel";
 import Preview from "@/components/HomeLayout/Preview/preview";
-import TextFormattingToolbar from "@/components/blocks/Text/toolbar/TextFormattingToolbar";
-import IndexFormattingToolbar from "@/components/blocks/Index/toolbar/IndexFormattingToolbar";
 import useEditorUIStore from "./Store/useEditorUIStore";
-import ImageEditPanel from "@/components/blocks/Image/toolbar/ImageEditPanel";
 import EditorFooter from "@/components/HomeLayout/EditorCanvas/Footer/EditorFooter";
 import CanvasHeaderBar from "@/components/HomeLayout/EditorCanvas/Header/CanvasHeaderBar";
-import ButtonEditTopBar from "@/components/blocks/Button/toolbar/ButtonEditTopBar";
-import ShapeEditTopBar from "@/components/blocks/Shape/toolbar/ShapeEdit/ShapeEditTopBar";
-import VideoEditTopBar from "@/components/blocks/Video/toolbar/VideoEditTopBar";
 import Navbar from "@/components/HomeLayout/NavigationPanel/Navbar";
 import { LayersPanel } from "@/components/HomeLayout/Preview/Layers/LayersPanel";
 import { KdPreviewLayerbtn, KdPreviewPagebtn } from "@/lib/icon/icons";
-import SvgElementsEditPanel from "@/components/blocks/Sticker/toolbar/SvgElementsEditPanel";
 import EditToolPanel from "@/components/HomeLayout/EditBarPanel/EditToolPanel";
 import StylePasteModeOverlay from "@/components/HomeLayout/EditorCanvas/toolbar/EditTool/ComanEditTool/StylePasteModeOverlay";
-import TableToolbar from "@/components/blocks/Table/toolbar/TableToolbar";
-import ChartToolbar from "@/components/blocks/Chart/toolbar/ChartToolbar";
-import InteractionEditTopBar from "@/components/blocks/Interaction/toolbar/InteractionEditTopBar";
+import { applyTemplateFromUrl } from "@/components/HomeLayout/AssetsPanel/Template/templateUtils";
+
+// These top bars are mutually exclusive — at most one is on screen, chosen by
+// the selected element's type — but statically importing all of them put every
+// toolbar and its dependencies in the initial bundle.
+const dynamicToolbar = <P,>(
+  loader: () => Promise<{ default: React.ComponentType<P> }>,
+) => dynamic(loader, { ssr: false, loading: () => null });
+
+const TextFormattingToolbar = dynamicToolbar(() => import("@/components/blocks/Text/toolbar/TextFormattingToolbar"));
+const IndexFormattingToolbar = dynamicToolbar(() => import("@/components/blocks/Index/toolbar/IndexFormattingToolbar"));
+const ImageEditPanel = dynamicToolbar(() => import("@/components/blocks/Image/toolbar/ImageEditPanel"));
+const ButtonEditTopBar = dynamicToolbar(() => import("@/components/blocks/Button/toolbar/ButtonEditTopBar"));
+const ShapeEditTopBar = dynamicToolbar(() => import("@/components/blocks/Shape/toolbar/ShapeEdit/ShapeEditTopBar"));
+const VideoEditTopBar = dynamicToolbar(() => import("@/components/blocks/Video/toolbar/VideoEditTopBar"));
+const SvgElementsEditPanel = dynamicToolbar(() => import("@/components/blocks/Sticker/toolbar/SvgElementsEditPanel"));
+const TableToolbar = dynamicToolbar(() => import("@/components/blocks/Table/toolbar/TableToolbar"));
+const ChartToolbar = dynamicToolbar(() => import("@/components/blocks/Chart/toolbar/ChartToolbar"));
+const InteractionEditTopBar = dynamicToolbar(() => import("@/components/blocks/Interaction/toolbar/InteractionEditTopBar"));
+
+// Stable identity so an empty slide doesn't mint a new array every render.
+const EMPTY_ELEMENTS: ElementType[] = [];
 
 export default function Home() {
-  const slides = useEditorStore((s) => s.slides);
+  // Subscribing to the whole `slides` array re-rendered the entire app tree on
+  // every mutation. Only the active slide's elements and the count are needed.
+  const currentSlideElements =
+    useEditorStore((s) => s.slides[s.activeSlide]?.elements) ?? EMPTY_ELEMENTS;
+  const totalSlides = useEditorStore((s) => s.slides.length);
   const activeSlide = useEditorStore((s) => s.activeSlide);
   const activeElementId = useEditorStore((s) => s.activeElementId);
   const selectedElementIds = useEditorStore((s) => s.selectedElementIds);
@@ -47,45 +64,40 @@ export default function Home() {
   const editOpenedFromHidden = useEditorUIStore((s) => s.editOpenedFromHidden);
   const activeRightPanel = useEditorStore((s) => s.activeRightPanel);
 
-  const currentSlideElements = slides[activeSlide]?.elements ?? [];
-  const selectedElements = currentSlideElements.filter((el) =>
-    selectedElementIds.includes(el.id),
+  // This ran on every render of the app root (O(n·m) filter + Set + find).
+  const activeElement = useMemo(() => {
+    const found = currentSlideElements.find((el) => el.id === activeElementId);
+    if (selectedElementCount <= 1) return found;
+
+    const selectedElements = currentSlideElements.filter((el) =>
+      selectedElementIds.includes(el.id),
+    );
+    const selectedTypes = new Set(selectedElements.map((el) => el.data.type));
+    return selectedTypes.size === 1 ? (found ?? selectedElements[0]) : null;
+  }, [
+    currentSlideElements,
+    selectedElementIds,
+    selectedElementCount,
+    activeElementId,
+  ]);
+  // Was an inline arrow in the JSX, so Preview's memo could never bail out.
+  const jumpToSlide = useCallback(
+    (i: number) => {
+      setActiveSlide(i);
+      const container = containerRef.current;
+      if (!container) return;
+      const allSlides = container.querySelectorAll(".kd-slide-scroll");
+      const targetSlide = allSlides[i] as HTMLElement;
+
+      if (targetSlide) {
+        const containerTop = container.getBoundingClientRect().top;
+        const slideTop = targetSlide.getBoundingClientRect().top;
+        const scrollOffset = container.scrollTop + (slideTop - containerTop);
+        container.scrollTo({ top: scrollOffset, behavior: "smooth" });
+      }
+    },
+    [setActiveSlide],
   );
-  const selectedTypes = new Set(selectedElements.map((el) => el.data.type));
-  const isSameTypeSelection =
-    selectedElementCount > 1 && selectedTypes.size === 1;
-  const activeElement =
-    selectedElementCount <= 1
-      ? currentSlideElements.find((el) => el.id === activeElementId)
-      : isSameTypeSelection
-        ? (currentSlideElements.find((el) => el.id === activeElementId) ??
-          selectedElements[0])
-        : null;
-  async function loadTemplate(url: string) {
-    try {
-      const res = await fetch(url);
-      let json = await res.json();
-
-      if (typeof json === "string") {
-        try {
-          json = JSON.parse(json);
-        } catch (e) {
-          console.error("Inner JSON parse failed", e);
-        }
-      }
-
-      const modern = json;
-
-      if (!modern?.slides) {
-        console.error("Invalid template structure", json);
-        return;
-      }
-      console.log("Template loaded successfully:", modern.slides);
-      useEditorStore.getState().applyFullTemplate(modern.slides);
-    } catch (err) {
-      console.error("Error loading template:", err);
-    }
-  }
 
   useEffect(() => {
     useEditorStore.persist.rehydrate();
@@ -98,7 +110,7 @@ export default function Home() {
   useEffect(() => {
     async function handleMessage(e: MessageEvent) {
       if (e.data.type === "LOAD_TEMPLATE") {
-        await loadTemplate(e.data.templateUrl);
+        await applyTemplateFromUrl(e.data.templateUrl);
       }
 
       if (e.data.type === "INIT_DATA") {
@@ -160,7 +172,13 @@ export default function Home() {
           </aside>
         )}
 
-        <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        {/* The floating edit panel covers the left of this column, so reserve
+            its width — otherwise the canvas centres itself underneath it. */}
+        <div
+          className={`flex flex-col flex-1 min-w-0 min-h-0 transition-all duration-300 ${
+            activePanelType === "edit" && editOpenedFromHidden ? "pl-[21.75%]" : ""
+          }`}
+        >
           <div className="flex flex-1 min-h-0 overflow-hidden">
             <div className="flex flex-col flex-1 min-w-0 min-h-0">
               <div className="h-[8%] shrink-0 flex items-center justify-center">
@@ -239,27 +257,7 @@ export default function Home() {
                     <Preview
                       activeSlide={activeSlide}
                       addSlide={addSlide}
-                      jumpToSlide={(i) => {
-                        setActiveSlide(i);
-                        const container = containerRef.current;
-                        if (!container) return;
-                        const allSlides =
-                          container.querySelectorAll(".kd-slide-scroll");
-                        const targetSlide = allSlides[i] as HTMLElement;
-
-                        if (targetSlide) {
-                          const containerTop =
-                            container.getBoundingClientRect().top;
-                          const slideTop =
-                            targetSlide.getBoundingClientRect().top;
-                          const scrollOffset =
-                            container.scrollTop + (slideTop - containerTop);
-                          container.scrollTo({
-                            top: scrollOffset,
-                            behavior: "smooth",
-                          });
-                        }
-                      }}
+                      jumpToSlide={jumpToSlide}
                     />
                   )}
                   {PreviewTab === "layers" && <LayersPanel />}
@@ -271,7 +269,7 @@ export default function Home() {
           {/* FOOTER */}
           <div className="h-[6%] shrink-0">
             <EditorFooter
-              totalSlides={slides.length}
+              totalSlides={totalSlides}
               currentSlide={activeSlide + 1}
             />
           </div>

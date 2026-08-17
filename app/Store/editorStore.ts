@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import type { PersistStorage, StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { getChapters } from "@/components/blocks/Index/lib/ChapterManager";
 import { paginateBookIndex } from "@/components/blocks/Index/lib/BookIndexPaginator";
@@ -224,6 +225,8 @@ export type TableData = Transform & Border & Shadow & {
   rows: number;
   columns: number;
   cells: TableCell[][];
+  /** Id of the library preset the look came from, so the gallery can mark it. */
+  styleId?: string;
   style: {
     borderColor: string;
     borderWidth: number;
@@ -241,6 +244,19 @@ export type TableData = Transform & Border & Shadow & {
     letterSpacing: number;
     textAlign: "left" | "center" | "right";
     verticalAlign: "top" | "middle" | "bottom";
+    /** First row painted as a heading. */
+    headerRow?: boolean;
+    headerBackground?: string;
+    headerTextColor?: string;
+    headerFontWeight?: number | string;
+    /** Every other body row painted with `bandBackground`. */
+    bandedRows?: boolean;
+    bandBackground?: string;
+    /** > 0 detaches the cells into separate rounded tiles. */
+    cellSpacing?: number;
+    cellRadius?: number;
+    /** Which grid lines are drawn. */
+    borderStyle?: "all" | "outer" | "horizontal" | "none";
   };
   locked?: boolean;
   hidden?: boolean;
@@ -323,6 +339,9 @@ export type InteractionData = Transform & Border & Shadow & Pick<ButtonData, "fo
   autoplay?: boolean;
   controls?: boolean;
   allowFullscreen?: boolean;
+
+  /** Where reader responses (quiz/question/contact form) are POSTed. */
+  submitUrl?: string;
 
   // ===== Quiz =====
   quizTitle?: string;
@@ -412,6 +431,23 @@ export type SlideType = {
   elements: ElementType[];
 };
 
+/**
+ * The only vocabulary the AI copilot can write with. Its planner produces
+ * validated actions, `lib/ai/executor` lowers them to these ops, and
+ * `applyAIEdits` is the single place they touch the document — so one user
+ * command becomes one undo step and the AI can never reach arbitrary state.
+ */
+export type AIEditOp =
+  | { kind: "updateElement"; slideId: string; elementId: string; patch: Partial<ElementData> }
+  | { kind: "addElement"; slideId: string; element: ElementType }
+  | { kind: "removeElement"; slideId: string; elementId: string }
+  | { kind: "moveElementLayer"; slideId: string; elementId: string; to: "front" | "back" | "forward" | "backward" }
+  | { kind: "updateSlide"; slideId: string; patch: Partial<Pick<SlideType, "background" | "width" | "height" | "subtitle_text">> }
+  | { kind: "insertSlide"; slide: SlideType; atIndex: number }
+  | { kind: "removeSlide"; slideId: string }
+  | { kind: "setActiveSlide"; index: number }
+  | { kind: "setSelection"; elementIds: string[] };
+
 export type SlideTemplate = {
   background?: string;
   elements: { id: string; data: ElementData }[];
@@ -473,7 +509,8 @@ interface EditorStore {
   toggleSelectedElementId: (id: string) => void;
   clearSelection: () => void;
   setActiveRightPanel: (p: string | null) => void;
-  applyFullTemplate: (slides: SlideType[]) => void;
+  applyFullTemplate: (slides: SlideType[], options?: { history?: boolean }) => void;
+  applyAIEdits: (ops: AIEditOp[]) => void;
   updateAllSlidesSize: (width: number, height: number) => void;
   syncBookIndex: (rootElementId: string) => void;
 
@@ -498,6 +535,81 @@ const remapCopiedReferences = (value: unknown, idMap: Map<string, string>): unkn
     );
   }
   return value;
+};
+
+/* ==================== PERSIST STORAGE ==================== */
+
+/**
+ * zustand's `persist` writes synchronously on EVERY `set()`, and
+ * `createJSONStorage` runs the `JSON.stringify` inside that write. On a large
+ * document that means serializing every slide again on every keystroke, every
+ * scroll tick and every selection change.
+ *
+ * This storage debounces the write instead, so only the latest snapshot is ever
+ * stringified. Pending writes are flushed when the tab is hidden or unloaded,
+ * so nothing is lost on refresh/close. Holding the snapshot by reference is
+ * safe because immer never mutates previous state in place.
+ */
+const PERSIST_WRITE_DELAY_MS = 500;
+
+const createDebouncedSessionStorage = <T,>(): PersistStorage<T> => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let pending: { name: string; value: StorageValue<T> } | null = null;
+  let listenersAttached = false;
+
+  const flush = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (!pending) return;
+    const { name, value } = pending;
+    pending = null;
+    try {
+      sessionStorage.setItem(name, JSON.stringify(value));
+    } catch {
+      // sessionStorage may be unavailable (SSR, private mode) or over quota.
+    }
+  };
+
+  const attachFlushListeners = () => {
+    if (listenersAttached || typeof window === "undefined") return;
+    listenersAttached = true;
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
+  };
+
+  return {
+    getItem: (name) => {
+      try {
+        const stored = sessionStorage.getItem(name);
+        return stored ? (JSON.parse(stored) as StorageValue<T>) : null;
+      } catch {
+        return null;
+      }
+    },
+    setItem: (name, value) => {
+      attachFlushListeners();
+      pending = { name, value };
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(flush, PERSIST_WRITE_DELAY_MS);
+    },
+    removeItem: (name) => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      pending = null;
+      try {
+        sessionStorage.removeItem(name);
+      } catch {
+        // ignore
+      }
+    },
+  };
 };
 
 const useEditorStore = create<EditorStore>()(
@@ -941,11 +1053,25 @@ const useEditorStore = create<EditorStore>()(
 
       /* ==================== SETTERS ==================== */
 
-      setActiveSlide: (index) => set((s) => { s.activeSlide = index; }),
-      setActiveElementId: (id) => set((s) => {
-        s.activeElementId = id;
-        s.selectedElementIds = id ? [id] : [];
-      }),
+      // These fire from very hot paths (scroll observer, canvas mousedown,
+      // element click) and always assigned a fresh array, so every one of them
+      // produced a store event — and a persist write — even when nothing
+      // actually changed. Guard before calling set().
+      setActiveSlide: (index) => {
+        if (get().activeSlide === index) return;
+        set((s) => { s.activeSlide = index; });
+      },
+      setActiveElementId: (id) => {
+        const { activeElementId, selectedElementIds } = get();
+        const alreadySelected = id === null
+          ? selectedElementIds.length === 0
+          : selectedElementIds.length === 1 && selectedElementIds[0] === id;
+        if (activeElementId === id && alreadySelected) return;
+        set((s) => {
+          s.activeElementId = id;
+          s.selectedElementIds = id ? [id] : [];
+        });
+      },
       setSelectedElementIds: (ids) => set((s) => {
         const next = Array.from(new Set(ids));
         s.selectedElementIds = next;
@@ -962,21 +1088,33 @@ const useEditorStore = create<EditorStore>()(
         s.selectedElementIds = next;
         s.activeElementId = next[next.length - 1] ?? null;
       }),
-      clearSelection: () => set((s) => {
-        s.activeElementId = null;
-        s.selectedElementIds = [];
-      }),
+      clearSelection: () => {
+        const { activeElementId, selectedElementIds } = get();
+        if (activeElementId === null && selectedElementIds.length === 0) return;
+        set((s) => {
+          s.activeElementId = null;
+          s.selectedElementIds = [];
+        });
+      },
       setActiveRightPanel: (p) => set((s) => { s.activeRightPanel = p; }),
 
 
 
       /* ==================== TEMPLATE ==================== */
 
-      applyFullTemplate: (templateSlides) => {
+      // Single entry point for "this template becomes the document". Callers pass
+      // the template's slides as-is; ids are always minted here so nothing from
+      // the source JSON leaks into the editor. `history` is opt-in so the
+      // initial LOAD_TEMPLATE handoff keeps behaving as a fresh document.
+      applyFullTemplate: (templateSlides, options) => {
+        if (options?.history) get().pushToHistory();
         set((state) => {
           state.slides = templateSlides.map((sl) => ({
             ...sl, id: generateId(),
-            elements: sl.elements.map((el) => ({ id: generateId(), data: { ...el.data } })),
+            // Deep clone: element data can hold nested structures (table cells,
+            // chart points, quiz options) that a spread would keep sharing with
+            // the template.
+            elements: sl.elements.map((el) => ({ id: generateId(), data: structuredClone(el.data) })),
           }));
           state.activeSlide = 0;
           state.activeElementId = null;
@@ -985,6 +1123,89 @@ const useEditorStore = create<EditorStore>()(
       },
 
 
+
+      /* ==================== AI COPILOT ==================== */
+
+      // Applies a whole AI command as a single transaction: one history entry,
+      // so "make the heading blue, bold and bigger" undoes as one step.
+      applyAIEdits: (ops: AIEditOp[]) => {
+        if (!ops.length) return;
+        get().pushToHistory();
+        set((state) => {
+          const slideById = (id: string) => state.slides.find((s) => s.id === id);
+
+          ops.forEach((op) => {
+            switch (op.kind) {
+              case "updateElement": {
+                const element = slideById(op.slideId)?.elements.find((el) => el.id === op.elementId);
+                if (element) Object.assign(element.data, op.patch);
+                break;
+              }
+              case "addElement": {
+                slideById(op.slideId)?.elements.push(op.element);
+                break;
+              }
+              case "removeElement": {
+                const slide = slideById(op.slideId);
+                if (!slide) break;
+                const index = slide.elements.findIndex((el) => el.id === op.elementId);
+                if (index !== -1) slide.elements.splice(index, 1);
+                break;
+              }
+              case "moveElementLayer": {
+                const slide = slideById(op.slideId);
+                if (!slide) break;
+                const index = slide.elements.findIndex((el) => el.id === op.elementId);
+                if (index === -1) break;
+                const [element] = slide.elements.splice(index, 1);
+                const target =
+                  op.to === "front" ? slide.elements.length
+                    : op.to === "back" ? 0
+                      : op.to === "forward" ? Math.min(slide.elements.length, index + 1)
+                        : Math.max(0, index - 1);
+                slide.elements.splice(target, 0, element);
+                break;
+              }
+              case "updateSlide": {
+                const slide = slideById(op.slideId);
+                if (slide) Object.assign(slide, op.patch);
+                break;
+              }
+              case "insertSlide": {
+                const index = Math.max(0, Math.min(state.slides.length, op.atIndex));
+                state.slides.splice(index, 0, op.slide);
+                break;
+              }
+              case "removeSlide": {
+                const index = state.slides.findIndex((s) => s.id === op.slideId);
+                if (index !== -1) state.slides.splice(index, 1);
+                break;
+              }
+              case "setActiveSlide": {
+                state.activeSlide = op.index;
+                break;
+              }
+              case "setSelection": {
+                state.selectedElementIds = op.elementIds;
+                state.activeElementId = op.elementIds[op.elementIds.length - 1] ?? null;
+                break;
+              }
+            }
+          });
+
+          // Slide/element removal can strand the cursor and the selection.
+          if (state.slides.length === 0) {
+            state.slides = [{ id: generateId(), height: 434, width: 350, background: "#ffffff", elements: [] }];
+          }
+          state.activeSlide = Math.max(0, Math.min(state.activeSlide, state.slides.length - 1));
+          const liveIds = new Set(state.slides[state.activeSlide]?.elements.map((el) => el.id) ?? []);
+          state.selectedElementIds = state.selectedElementIds.filter((id) => liveIds.has(id));
+          state.activeElementId =
+            state.activeElementId && liveIds.has(state.activeElementId)
+              ? state.activeElementId
+              : state.selectedElementIds[state.selectedElementIds.length - 1] ?? null;
+        });
+      },
 
       /* ==================== BOOK COVER HELPERS ==================== */
 
@@ -1058,14 +1279,15 @@ const useEditorStore = create<EditorStore>()(
     })),
     {
       name: "editor-store",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createDebouncedSessionStorage(),
       skipHydration: true,
+      // activeRightPanel is transient sidebar UI, not document state — persisting
+      // it made opening a panel serialize the whole document.
       partialize: (state) => ({
         slides: state.slides,
         activeSlide: state.activeSlide,
         activeElementId: state.activeElementId,
         selectedElementIds: state.selectedElementIds,
-        activeRightPanel: state.activeRightPanel,
       }),
     }
   )

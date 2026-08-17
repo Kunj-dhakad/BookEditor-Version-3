@@ -62,6 +62,7 @@ export default function InteractionSettings() {
   const isGoToPage = data.interactionKind === "nav-goto-page";
   const isShop = SHOP_KINDS.includes(data.interactionKind);
   const isProductCard = data.interactionKind === "product-card";
+  const isPriceTag = data.interactionKind === "price-tag";
   const isEngagement =
     isQuiz ||
     isQuestion ||
@@ -628,8 +629,19 @@ export default function InteractionSettings() {
       )}
 
       {/* ===================== SHOP (product card / button / price tag) ===================== */}
-      {isProductCard && (
+      {isShop && (
         <div className="mb-3">
+          {!isPriceTag && (
+            <>
+              <label className="kd-btn-setting-label block mb-1">Product name</label>
+              <input
+                className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+                value={data.productName ?? ""}
+                placeholder="e.g. Ceramic pour-over kit"
+                onChange={(event) => patch({ productName: event.target.value })}
+              />
+            </>
+          )}
           <label className="kd-btn-setting-label block mb-1">Price</label>
           <input
             className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
@@ -637,19 +649,44 @@ export default function InteractionSettings() {
             placeholder="e.g. $19.99"
             onChange={(event) => patch({ productPrice: event.target.value })}
           />
-          <label className="kd-btn-setting-label block mb-1">
-            Image URL <span className="text-gray-400">(optional)</span>
-          </label>
-          <input
-            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
-            value={data.productImageUrl ?? ""}
-            placeholder="https://example.com/product.jpg"
-            onChange={(event) =>
-              patch({ productImageUrl: event.target.value })
-            }
-          />
+          {isProductCard && (
+            <>
+              <label className="kd-btn-setting-label block mb-1">
+                Image URL <span className="text-gray-400">(optional)</span>
+              </label>
+              <input
+                className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-3"
+                value={data.productImageUrl ?? ""}
+                placeholder="https://example.com/product.jpg"
+                onChange={(event) =>
+                  patch({ productImageUrl: event.target.value })
+                }
+              />
+            </>
+          )}
         </div>
       )}
+
+      {/* ===================== RESPONSE DELIVERY (temporarily hidden) =====================
+      {(isQuiz || isQuestion || isContactForm) && (
+        <div className="mb-3">
+          <label className="kd-btn-setting-label block mb-1">
+            Response webhook URL <span className="text-gray-400">(optional)</span>
+          </label>
+          <input
+            type="url"
+            className="kd-btn-setting-input w-full px-2.5 py-1.5 mb-1"
+            value={data.submitUrl ?? ""}
+            placeholder="https://your-server.com/responses"
+            onChange={(event) => patch({ submitUrl: event.target.value })}
+          />
+          <p className="text-[11px] text-gray-500">
+            Readers&apos; answers are POSTed here as JSON. Leave it empty and the
+            popup just confirms on screen without storing anything.
+          </p>
+        </div>
+      )}
+      */}
 
       {/* ===================== NON-ENGAGEMENT (link / tag / social / caption / shop) ===================== */}
       {!isEngagement && !isSlideshow && !isNavigation && (

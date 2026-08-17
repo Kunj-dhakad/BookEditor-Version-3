@@ -15,7 +15,43 @@ export type ChapterEntry = {
  * memoizable derivation keeps TOC data correct for insertions, deletion,
  * reordering, duplication, and history restores without storing stale ranges.
  */
+function chaptersEqual(a: ChapterEntry[], b: ChapterEntry[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((entry, index) => {
+    const other = b[index];
+    return (
+      entry.elementId === other.elementId &&
+      entry.slideId === other.slideId &&
+      entry.title === other.title &&
+      entry.subtitle === other.subtitle &&
+      entry.startPage === other.startPage &&
+      entry.endPage === other.endPage &&
+      entry.displayTitle === other.displayTitle
+    );
+  });
+}
+
+let cachedSlides: SlideType[] | null = null;
+let cachedChapters: ChapterEntry[] = [];
+
+/**
+ * Called from a zustand selector, so this runs on every store notification.
+ * Two layers of caching keep that cheap:
+ *  - a reference hit skips the O(slides x elements) scan entirely;
+ *  - an equal result returns the *previous* array, so the reference stays
+ *    stable across edits that don't touch chapters and subscribers don't
+ *    re-render.
+ * The returned array must be treated as read-only (all callers already do).
+ */
 export function getChapters(slides: SlideType[]): ChapterEntry[] {
+  if (slides === cachedSlides) return cachedChapters;
+  const next = computeChapters(slides);
+  cachedSlides = slides;
+  if (!chaptersEqual(next, cachedChapters)) cachedChapters = next;
+  return cachedChapters;
+}
+
+function computeChapters(slides: SlideType[]): ChapterEntry[] {
   const starts: Array<Omit<ChapterEntry, "endPage" | "displayTitle"> & { autoNumber: boolean }> = [];
   slides.forEach((slide, slideIndex) => {
     // A page is a chapter start once, even if a template accidentally contains

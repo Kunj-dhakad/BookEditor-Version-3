@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, PDFPage, rgb, StandardFonts, PDFFont } from "pdf-lib";
+import { interactionFlatLabel } from "@/components/blocks/Interaction/renderer/interactionLabel";
 import {
   S3Client,
   PutObjectCommand,
@@ -791,6 +792,47 @@ export async function POST(req: NextRequest) {
 
 
 
+
+          // ── INTERACTION ──
+          // Quizzes and page-flips cannot run in a PDF, but the element was
+          // being skipped completely — the page lost the button, its label and
+          // its colour. Draw the pill and its label instead.
+          else if (data.type === "interaction") {
+            const x = Number.isFinite(data.x) ? data.x : 0;
+            const yTop = Number.isFinite(data.y) ? data.y : 0;
+            const w = Number.isFinite(data.width) ? data.width : 140;
+            const h = Number.isFinite(data.height) ? data.height : 42;
+            const pdfY = CANVAS_HEIGHT - yTop - h;
+            const radius = Number(data.borderRadius) || 0;
+            const isTransparent =
+              !data.backgroundColor || data.backgroundColor === "transparent";
+
+            if (!isTransparent) {
+              drawRoundedRect(page, x, pdfY, w, h, radius, hexToRgb(data.backgroundColor));
+            }
+
+            const label = interactionFlatLabel(data);
+            // pdf-lib standard fonts are WinAnsi only; drop anything outside it
+            // rather than throwing while writing the document.
+            const safeLabel = label.replace(/[^ -ÿ]/g, "").trim();
+            if (safeLabel) {
+              const fontSize = Number(data.fontSize) || 13;
+              const weight = data.fontWeight;
+              const isBold =
+                weight === "bold" || (typeof weight === "number" && weight >= 600);
+              const font = isBold
+                ? await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+                : helv;
+              const textWidth = font.widthOfTextAtSize(safeLabel, fontSize);
+              page.drawText(safeLabel, {
+                x: x + Math.max(0, (w - textWidth) / 2),
+                y: pdfY + (h - fontSize) / 2 + fontSize * 0.2,
+                size: fontSize,
+                font,
+                color: hexToRgb(data.textColor || "#ffffff"),
+              });
+            }
+          }
 
           // ── SHAPE ──
           else if (data.type === "shape") {

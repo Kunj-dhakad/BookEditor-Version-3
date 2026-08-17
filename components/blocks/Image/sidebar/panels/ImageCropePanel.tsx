@@ -2,7 +2,7 @@
 import React from "react";
 import useEditorStore, { ImageData } from "@/app/Store/editorStore";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
-import { cropperControls } from "@/components/blocks/Image/editor/ImageCropOverlay";
+import { cropperControls } from "@/components/blocks/Image/editor/cropperControls";
 import useProjectInfoStore from "@/app/Store/projectInfoStore";
 
 const RATIOS = [

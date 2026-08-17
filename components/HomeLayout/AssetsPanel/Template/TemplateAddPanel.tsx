@@ -5,16 +5,9 @@ import React, { useEffect, useMemo,
 import Image from "next/image";
 import { FaSearch } from "react-icons/fa";
 // import { ChevronsLeft, ChevronsRight } from "lucide-react";
-import useEditorStore from "@/app/Store/editorStore";
 import useProjectInfoStore from "@/app/Store/projectInfoStore";
-interface ElementItem {
-    id: number;
-    thumbnail_url: string;
-    title: string;
-    template_category: string;
-    json: string;
-    json_url: string;
-}
+import TemplatePreviewPanel from "./TemplatePreviewPanel";
+import type { TemplateListItem } from "./types";
 
 // const CATEGORIES = [
 //     "All", "Digital marketing",
@@ -23,10 +16,14 @@ interface ElementItem {
 // ];
 
 const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
-    const [elements, setElements] = useState<ElementItem[]>([]);
+    const [elements, setElements] = useState<TemplateListItem[]>([]);
     const [search, setSearch] = useState("");
     const [activeCategory, setActiveCategory] = useState("All");
     const [loading, setLoading] = useState(true);
+    // Clicking a thumbnail only opens the detail view inside this same panel —
+    // the template JSON is fetched there, and nothing is applied until the user
+    // presses an apply button.
+    const [previewTemplate, setPreviewTemplate] = useState<TemplateListItem | null>(null);
     // const categoryRef = useRef<HTMLDivElement>(null);
 
     const token = useProjectInfoStore((s) => s.token);
@@ -62,33 +59,6 @@ const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
     }, [api_url, search, token]);
 
 
-    async function loadTemplate(url: string) {
-        try {
-            const res = await fetch(url);
-            let json = await res.json();
-
-            if (typeof json === "string") {
-                try {
-                    json = JSON.parse(json);
-                } catch (e) {
-                    console.error("Inner JSON parse failed", e);
-                }
-            }
-
-            const modern = json;
-
-            if (!modern?.slides) {
-                console.error("Invalid template structure", json);
-                return;
-            }
-
-            useEditorStore.getState().applyFullTemplate(modern.slides);
-
-        } catch (err) {
-            console.error("Error loading template:", err);
-        }
-    }
-
     const filtered = useMemo(() => {
         return elements.filter((el) => {
             const s = el.title?.toLowerCase().includes(search.toLowerCase());
@@ -98,7 +68,7 @@ const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
         });
     }, [elements, search, activeCategory]);
     const grouped = useMemo(() => {
-        const map = new Map<string, ElementItem[]>();
+        const map = new Map<string, TemplateListItem[]>();
         filtered.forEach((el) => {
             if (!map.has(el.template_category)) map.set(el.template_category, []);
             map.get(el.template_category)!.push(el);
@@ -113,6 +83,18 @@ const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
     //     });
     // };
 
+    // ========== DETAIL VIEW (after card click) ==========
+    if (previewTemplate) {
+        return (
+            <TemplatePreviewPanel
+                key={previewTemplate.id}
+                template={previewTemplate}
+                onBack={() => setPreviewTemplate(null)}
+            />
+        );
+    }
+
+    // ========== GRID VIEW ==========
     return (
         <div className="kd-element-panel w-full h-full   px-2 flex flex-col overflow-hidden" >
 
@@ -196,9 +178,12 @@ const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
 
                             <div className="grid grid-cols-2 gap-3">
                                 {items.map((el) => (
-                                    <div
+                                    <button
                                         key={el.id}
-                                        onClick={() => loadTemplate(el.json_url)}
+                                        type="button"
+                                        onClick={() => setPreviewTemplate(el)}
+                                        aria-label={`Preview template ${el.title}`}
+                                        title={el.title}
                                         draggable
                                         onDragStart={(e) =>
                                             e.dataTransfer.setData(
@@ -225,11 +210,17 @@ const TemplateAddPanel: React.FC<{ Addtype?: string }> = ({ }) => {
                                                 }
                                             }}
                                         />
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         </div>
                     ))}
+
+                {!loading && grouped.length === 0 && (
+                    <div className="py-8 text-center text-sm" style={{ color: "var(--kd-text-muted)" }}>
+                        No templates found
+                    </div>
+                )}
             </div>
         </div>
     );

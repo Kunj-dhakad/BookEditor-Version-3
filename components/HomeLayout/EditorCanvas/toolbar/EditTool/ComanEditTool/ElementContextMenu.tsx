@@ -28,10 +28,10 @@ const ElementContextMenu: React.FC<ElementContextMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const slides = useEditorStore((s) => s.slides);
-  const activeSlide = useEditorStore((s) => s.activeSlide);
-  const element = slides[activeSlide]?.elements.find(
-    (el) => el.id === elementId,
+  // Atomic selector: immer keeps untouched elements referentially stable, so
+  // this only re-renders when *this* element changes — not on every store write.
+  const element = useEditorStore((s) =>
+    s.slides[s.activeSlide]?.elements.find((el) => el.id === elementId),
   );
   const deleteElement = useEditorStore((s) => s.deleteElement);
   const duplicateElement = useEditorStore((s) => s.duplicateElement);

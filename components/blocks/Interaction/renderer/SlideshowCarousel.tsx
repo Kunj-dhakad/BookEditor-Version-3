@@ -57,9 +57,15 @@ const SlideshowCarousel: React.FC<SlideshowCarouselProps> = ({
   const [index, setIndex] = useState(0);
   const [scale, setScale] = useState<Scale>(() => scaleFromWidth(320));
 
-  useEffect(() => {
+  // Reset to the first slide when the image set changes. Done by adjusting
+  // state during render (React's recommended pattern) rather than in an
+  // effect, which avoided a cascading second render.
+  const listKey = list.join("|");
+  const [prevListKey, setPrevListKey] = useState(listKey);
+  if (listKey !== prevListKey) {
+    setPrevListKey(listKey);
     setIndex(0);
-  }, [list.join("|")]);
+  }
 
   useEffect(() => {
     const el = rootRef.current;
@@ -77,20 +83,23 @@ const SlideshowCarousel: React.FC<SlideshowCarouselProps> = ({
     return () => ro.disconnect();
   }, []);
 
-  const go = useCallback(
-    (dir: -1 | 1) => {
-      if (list.length <= 1) return;
-      setIndex((current) => (current + dir + list.length) % list.length);
-    },
-    [list.length],
-  );
+  // Only used by the arrow buttons, so it doesn't need memoizing.
+  const go = (dir: -1 | 1) => {
+    if (list.length <= 1) return;
+    setIndex((current) => (current + dir + list.length) % list.length);
+  };
 
+  // `go` and `index` used to be dependencies here, so the interval was torn
+  // down and recreated on every single slide change. The functional updater
+  // means neither is needed.
   useEffect(() => {
     if (!autoplay || list.length <= 1) return;
     const ms = Math.max(1500, Number(interval) || 3000);
-    const timer = window.setInterval(() => go(1), ms);
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % list.length);
+    }, ms);
     return () => window.clearInterval(timer);
-  }, [autoplay, interval, list.length, go, index]);
+  }, [autoplay, interval, list.length]);
 
   const onNav = (event: React.SyntheticEvent, dir: -1 | 1) => {
     if (stopPropagation) {

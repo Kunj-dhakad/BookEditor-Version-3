@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { SVGData } from "@/app/Store/editorStore";
+import { useThrottledCommit } from "@/lib/hooks/useThrottledCommit";
 
 interface Props {
     data: SVGData;
@@ -16,6 +17,13 @@ const OpacityPanel: React.FC<Props> = ({ data, updateButton, targetRef, onClose 
     const popupRef = useRef<HTMLDivElement>(null);
     const POPUP_WIDTH = 248;
     const opacityPct = Math.round((data.opacity ?? 1) * 100);
+    // Dragging this slider used to write opacity to the store on every
+    // pixel, re-rendering the canvas each time. Drive the thumb from local
+    // state and throttle the commit; the last value is flushed on release.
+    const { liveValue: sliderPct, change: sliderChange, release: sliderRelease } =
+        useThrottledCommit(opacityPct, (pct: number) => {
+            updateButton({ opacity: Math.min(100, Math.max(0, pct)) / 100 });
+        });
     useEffect(() => {
         const target = targetRef.current;
         if (!target) return;
@@ -60,7 +68,9 @@ const OpacityPanel: React.FC<Props> = ({ data, updateButton, targetRef, onClose 
     };
 
     const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-        commitPct(Number(e.target.value));
+        const pct = Number(e.target.value);
+        setInputVal(String(pct));
+        sliderChange(pct);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,8 +122,10 @@ const OpacityPanel: React.FC<Props> = ({ data, updateButton, targetRef, onClose 
                         min={0}
                         max={100}
                         step={1}
-                        value={opacityPct}
+                        value={sliderPct}
                         onChange={handleSlider}
+                        onPointerUp={sliderRelease}
+                        onKeyUp={sliderRelease}
                         className="flex-1 accent-violet-600 h-1.5 cursor-pointer"
                     />
 

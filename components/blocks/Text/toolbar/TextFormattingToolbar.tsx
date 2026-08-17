@@ -803,7 +803,9 @@ const TextFormattingToolbar: React.FC = () => {
             <KdTextEditMinus />
           </span>
 
-          <span className="kd-text-fontsize-value w-8 flex items-center justify-center  text-center">
+          {/* Fixed box: a 3-digit size must not widen the button and shove the
+              rest of the toolbar sideways. */}
+          <span className="kd-text-fontsize-value w-10 shrink-0 min-w-0 overflow-hidden tabular-nums flex items-center justify-center text-center">
             {data.fontSize || 30}
           </span>
 

@@ -354,11 +354,13 @@ const RenderVideo: React.FC<{
                 <FloatingToolBar target={targetEl} />
             )} */}
 
-        <ElementContextMenu
-          position={selectedElementIds.includes(id) ? contextMenuPos : null}
-          elementId={id}
-          onClose={closeContextMenu}
-        />
+        {selectedElementIds.includes(id) && contextMenuPos && (
+          <ElementContextMenu
+            position={contextMenuPos}
+            elementId={id}
+            onClose={closeContextMenu}
+          />
+        )}
       </>
     );
   },

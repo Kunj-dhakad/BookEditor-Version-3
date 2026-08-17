@@ -6,10 +6,16 @@ import React, {
   memo,
   useState,
 } from "react";
+import dynamic from "next/dynamic";
 import { useShallow } from "zustand/shallow";
 import useEditorStore, { ElementData, TextData } from "@/app/Store/editorStore";
 import RenderTable from "@/components/blocks/Table/renderer/RenderTable";
-import RenderChart from "@/components/blocks/Chart/renderer/RenderChart";
+// recharts drags in the whole d3 subtree (~450KB). Charts are rare on a page,
+// so load the renderer on demand rather than on every editor boot.
+const RenderChart = dynamic(
+  () => import("@/components/blocks/Chart/renderer/RenderChart"),
+  { ssr: false, loading: () => null },
+);
 import RenderText from "@/components/blocks/Text/renderer/RenderText";
 import RenderBookIndex from "./RenderElement/RenderBookIndex";
 import RenderImage from "@/components/blocks/Image/renderer/RenderImage";
@@ -17,7 +23,9 @@ import RenderButton from "@/components/blocks/Button/renderer/RenderButton";
 import RenderShape from "@/components/blocks/Shape/renderer/RenderShape";
 import RenderVideo from "@/components/blocks/Video/renderer/RenderVideo";
 import SlideSettingToolbar from "./toolbar/SlideSetting/SlideSettingToolbar";
-import { registerSlideRef } from "@/lib/outputGenerateLibrary";
+// Direct import, not the barrel: the barrel also re-exports generateSlidesZip,
+// which pulls jszip + file-saver + html-to-image into the canvas boot path.
+import { registerSlideRef } from "@/lib/outputGenerateLibrary/slideRefRegistry";
 import useEditorUIStore from "@/app/Store/useEditorUIStore";
 import RenderWatermark from "@/components/blocks/Watermark/renderer/RenderWatermark";
 import RenderSvgElements from "@/components/blocks/Sticker/renderer/RenderSvgElements";
@@ -179,12 +187,13 @@ interface SlideCanvasProps {
   slideId: string;
   idx: number;
   isActive: boolean;
+  shouldRenderContent: boolean;
   onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   onSlideMouseDown: (idx: number) => (e: React.MouseEvent) => void;
 }
 
 const SlideCanvas = memo(
-  ({ slideId, idx, isActive, onDrop, onSlideMouseDown }: SlideCanvasProps) => {
+  ({ slideId, idx, isActive, shouldRenderContent, onDrop, onSlideMouseDown }: SlideCanvasProps) => {
     const { clearSelection, setSelectedElementIds } = useEditorStore(
       useShallow((s) => ({
         clearSelection: s.clearSelection,
@@ -213,6 +222,13 @@ const SlideCanvas = memo(
     const slide = useEditorStore(
       useCallback((s) => s.slides.find((sl) => sl.id === slideId), [slideId])
     );
+
+    // Only the active slide and its immediate neighbours keep their element
+    // tree mounted. Distant slides keep their sized wrapper — so scroll
+    // position, registerSlideRef and the IntersectionObserver are unaffected —
+    // they just render no children. Export needs every slide's real content to
+    // rasterize it, so it bypasses the window entirely.
+    const renderContent = imageExportMode || shouldRenderContent;
 
     const getCanvasPoint = useCallback((e: React.MouseEvent | MouseEvent) => {
       const el = slideRef.current;
@@ -289,7 +305,6 @@ const SlideCanvas = memo(
     }, [buildMarquee, clearSelection, setSelectedElementIds, slide]);
 
     if (!slide) return null;
-    console.log("Rendering SlideCanvas", { "new slide": slide });
     const clipBounds = {
       x: 0,
       y: 0,
@@ -335,7 +350,7 @@ const SlideCanvas = memo(
           >
          
 
-            {slide.elements.map((el) => {
+            {renderContent && slide.elements.map((el) => {
               const d = el.data as ElementData;
               if (d.type === "text" && d.bookRole === "index")
                 return <RenderBookIndex key={el.id} id={el.id} data={d} slideIndex={idx} clipBounds={clipBounds} />;
@@ -390,6 +405,7 @@ const SlideCanvas = memo(
     prev.slideId === next.slideId &&
     prev.idx === next.idx &&
     prev.isActive === next.isActive &&
+    prev.shouldRenderContent === next.shouldRenderContent &&
     prev.onDrop === next.onDrop &&
     prev.onSlideMouseDown === next.onSlideMouseDown
 );
@@ -408,6 +424,9 @@ const MainCanvas: React.FC<{
   );
 
   const activeSlide = useEditorStore((s) => s.activeSlide);
+  const [renderedSlideIds, setRenderedSlideIds] = useState<Set<string>>(
+    () => new Set(slideIds.slice(0, 3)),
+  );
 
   // âœ… Canvas width â€” sirf ye ek value
   const canvasWidth = useEditorStore(
@@ -454,41 +473,133 @@ useEffect(() => {
   const container = containerRef.current;
   if (!container) return;
 
+  // Last known visibility of every slide, not just the ones in this callback —
+  // a single threshold crossing tells us nothing about the slide it replaced.
+  let scrollRaf: number | null = null;
+  const syncActivePageFromScroll = () => {
+    scrollRaf = null;
+    const viewport = container.getBoundingClientRect();
+    const viewportCenter = viewport.top + viewport.height / 2;
+    let nearestIndex = -1;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    container.querySelectorAll<HTMLElement>("[data-slide-index]").forEach((page) => {
+      const index = Number(page.dataset.slideIndex);
+      const rect = page.getBoundingClientRect();
+      const distance = Math.abs(rect.top + rect.height / 2 - viewportCenter);
+      if (Number.isInteger(index) && distance < nearestDistance) {
+        nearestIndex = index;
+        nearestDistance = distance;
+      }
+    });
+
+    if (nearestIndex >= 0 && useEditorStore.getState().activeSlide !== nearestIndex) {
+      useEditorStore.getState().clearSelection();
+      setActiveSlide(nearestIndex);
+    }
+  };
+  const handleCanvasScroll = () => {
+    useEditorStore.getState().clearSelection();
+    if (scrollRaf === null) scrollRaf = requestAnimationFrame(syncActivePageFromScroll);
+  };
+
+  container.addEventListener("scroll", handleCanvasScroll, { passive: true });
+  syncActivePageFromScroll();
+  return () => {
+    container.removeEventListener("scroll", handleCanvasScroll);
+    if (scrollRaf !== null) cancelAnimationFrame(scrollRaf);
+  };
+
+  const legacyContainer = container!;
+  const visibility = new Map<number, number>();
+  let rafId: number | null = null;
+
+  const commitActiveSlide = () => {
+    rafId = null;
+    let bestIdx: number | null = null;
+    let bestRatio = 0;
+    visibility.forEach((ratio, idx) => {
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        bestIdx = idx;
+      }
+    });
+    if (bestIdx !== null && useEditorStore.getState().activeSlide !== bestIdx) {
+      // A page change caused by canvas scrolling ends the current edit
+      // selection, without firing updates for every scroll pixel.
+      clearSelection();
+      setActiveSlide(bestIdx);
+    }
+  };
+
   const observer = new IntersectionObserver(
     (entries) => {
-      let bestIdx: number | null = null;
-      let bestRatio = 0;
-      
       entries.forEach((entry) => {
         const idxAttr = (entry.target as HTMLElement).dataset.slideIndex;
         if (idxAttr === undefined) return;
-        const idx = Number(idxAttr);
-        if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-          bestIdx = idx;
-          bestRatio = entry.intersectionRatio;
-        }
+        visibility.set(
+          Number(idxAttr),
+          entry.isIntersecting ? entry.intersectionRatio : 0
+        );
       });
-      if (bestIdx !== null) {
-        setActiveSlide(bestIdx);
-      }
+      // A fast scroll fires this many times per frame; only decide once.
+      if (rafId === null) rafId = requestAnimationFrame(commitActiveSlide);
     },
     {
-      root: container,
-      threshold: [0.5], 
+      root: legacyContainer,
+      // A single 0.5 threshold never fires for a slide taller than the
+      // viewport (zoomed in), leaving the active page stuck. A spread of
+      // thresholds keeps "most visible page wins" true at every zoom level.
+      threshold: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1],
     }
   );
 
-  const slideEls = container.querySelectorAll("[data-slide-index]");
+  const slideEls = legacyContainer.querySelectorAll("[data-slide-index]");
   slideEls.forEach((el) => observer.observe(el));
 
-  return () => observer.disconnect();
-}, [slideIds.length, setActiveSlide, containerRef]); 
+  return () => {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    observer.disconnect();
+  };
+}, [slideIds.length, setActiveSlide, containerRef]);
 
 
 
 
 
 
+
+  // Pre-mount pages before they reach the viewport and retain them afterward.
+  // This eliminates blank pages when scrolling back while keeping initial work
+  // bounded for a long document.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const mountRange = (centerIndex: number) => {
+      setRenderedSlideIds((current) => {
+        const next = new Set(current);
+        for (let offset = -2; offset <= 2; offset += 1) {
+          const id = slideIds[centerIndex + offset];
+          if (id) next.add(id);
+        }
+        return next.size === current.size ? current : next;
+      });
+    };
+
+    mountRange(activeSlide);
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const index = Number((entry.target as HTMLElement).dataset.slideIndex);
+        if (Number.isInteger(index)) mountRange(index);
+      }),
+      { root: container, rootMargin: "150% 0px", threshold: 0 },
+    );
+
+    container.querySelectorAll("[data-slide-index]").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [activeSlide, containerRef, slideIds]);
 
   useEffect(() => {
     const unsub = useEditorStore.subscribe((state) => {
@@ -784,7 +895,6 @@ useEffect(() => {
       <div
         ref={containerRef}
         className="default-img absolute inset-0 my-2 kd-default-scroll-panel overflow-auto w-full flex flex-col items-center "
-
       >
         <div
           style={{
@@ -799,6 +909,7 @@ useEffect(() => {
               slideId={slideId}
               idx={idx}
               isActive={idx === activeSlide}
+              shouldRenderContent={renderedSlideIds.has(slideId)}
               onDrop={handleDrop}
               onSlideMouseDown={handleSlideMouseDown}
             />

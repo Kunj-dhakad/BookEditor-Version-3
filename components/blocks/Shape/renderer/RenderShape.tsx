@@ -161,11 +161,13 @@ const RenderShape: React.FC<{
                     </div>
                 )}
             </CanvasDragDrop>
-            <ElementContextMenu
-                position={isSelected ? contextMenuPos : null}
+            {isSelected && contextMenuPos && (
+              <ElementContextMenu
+                position={contextMenuPos}
                 elementId={id}
                 onClose={closeContextMenu}
-            />
+              />
+            )}
         </>
     );
 }, (p, n) => {
