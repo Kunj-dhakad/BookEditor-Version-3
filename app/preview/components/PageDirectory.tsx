@@ -48,7 +48,7 @@ export default function PageDirectory() {
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {pages.map((page, index) => {
             const pageNumber = index + 1;
-            const firstText = page.blocks.find((block) => block.kind === "text");
+            const firstText = page.blocks.find((block: { kind: string; }) => block.kind === "text");
             const title =
               firstText && firstText.kind === "text" && firstText.text.trim()
                 ? firstText.text
