@@ -1,24 +1,49 @@
-import mysql, { Connection } from 'mysql2/promise';
+// import mysql, { Connection } from 'mysql2/promise';
 
-let connection: Connection | null = null;
+// let connection: Connection | null = null;
 
-export const dbConnection = async (): Promise<Connection> => {
-  if (connection) {
-    return connection;
+// export const dbConnection = async (): Promise<Connection> => {
+//   if (connection) {
+//     return connection;
+//   }
+
+//   try {
+//     connection = await mysql.createConnection({
+//       host: process.env.MYSQL_HOST,     
+//       user: process.env.MYSQL_USER,       
+//       password: process.env.MYSQL_PASSWORD, 
+//       database: process.env.MYSQL_DATABASE, 
+//     });
+
+//     console.log('Database connected successfully');
+//     return connection;
+//   } catch (error) {
+//     console.error('Database connection failed:', error);
+//     throw new Error('Could not connect to the database');
+//   }
+// };
+
+
+import mysql, { Pool } from 'mysql2/promise';
+let pool: Pool | null = null;
+
+export const dbConnection = (): Pool => {
+  if (pool) {
+    return pool;
   }
 
-  try {
-    connection = await mysql.createConnection({
-      host: process.env.MYSQL_HOST,     
-      user: process.env.MYSQL_USER,       
-      password: process.env.MYSQL_PASSWORD, 
-      database: process.env.MYSQL_DATABASE, 
-    });
+  pool = mysql.createPool({
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
+    waitForConnections: true,
+    connectionLimit: 10,      
+    queueLimit: 0,
+    enableKeepAlive: true,   
+    keepAliveInitialDelay: 10000,
+  });
 
-    console.log('Database connected successfully');
-    return connection;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    throw new Error('Could not connect to the database');
-  }
+  console.log('MySQL pool created');
+  return pool;
 };
